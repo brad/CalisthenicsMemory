@@ -14,6 +14,8 @@ import io.github.gonbei774.calisthenicsmemory.data.TodoTask
 import io.github.gonbei774.calisthenicsmemory.data.AppTheme
 import io.github.gonbei774.calisthenicsmemory.data.LanguagePreferences
 import io.github.gonbei774.calisthenicsmemory.data.ThemePreferences
+import io.github.gonbei774.calisthenicsmemory.ui.screens.*
+import io.github.gonbei774.calisthenicsmemory.viewmodel.AiViewModel
 import java.util.Locale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -205,6 +207,12 @@ fun CalisthenicsMemoryApp(
     onThemeChange: (AppTheme) -> Unit = {}
 ) {
     val viewModel: TrainingViewModel = viewModel()
+    val context = androidx.compose.ui.platform.LocalContext.current.applicationContext as android.app.Application
+    val aiViewModel: AiViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+            return AiViewModel(context) as T
+        }
+    })
     var currentScreen by rememberSaveable(stateSaver = ScreenSaver) { mutableStateOf<Screen>(Screen.Home) }
     val snackbarHostState = remember { SnackbarHostState() }
     val appColors = LocalAppColors.current
@@ -341,9 +349,8 @@ fun CalisthenicsMemoryApp(
                         onNavigateToExecute = { programId ->
                             currentScreen = Screen.ProgramExecution(programId)
                         },
-                        onNavigateToResume = { programId ->
-                            currentScreen = Screen.ProgramExecution(programId, resumeSavedState = true)
-                        }
+                        onNavigateToResume = { programId -> currentScreen = Screen.ProgramExecution(programId, resumeSavedState = true) },
+                        onNavigateToAiCoach = { currentScreen = Screen.AiCoach("Analyze my To Do list and suggest any improvements or specific goals for today.") }
                     )
                 }
                 is Screen.ProgramEdit -> {
@@ -439,6 +446,16 @@ fun CalisthenicsMemoryApp(
                         onNavigateToCommunityShareExport = { currentScreen = Screen.CommunityShareExport }
                     )
                 }
+                is Screen.AiCoach -> {
+
+                    BackHandler { currentScreen = Screen.Home }
+                    AiCoachScreen(
+                        initialPrompt = (currentScreen as Screen.AiCoach).initialPrompt,
+                        viewModel = aiViewModel,
+                        trainingViewModel = viewModel,
+                        onNavigateBack = { currentScreen = Screen.Home }
+                    )
+                }
             }
         }
     }
@@ -463,6 +480,7 @@ sealed class Screen {
     object Backup : Screen()
     object CsvDataManagement : Screen()
     object ShareHub : Screen()
+    data class AiCoach(val initialPrompt: String? = null) : Screen()
 }
 
 private val ScreenSaver = mapSaver(
@@ -510,6 +528,11 @@ private val ScreenSaver = mapSaver(
                 Screen.Backup -> put("type", "Backup")
                 Screen.CsvDataManagement -> put("type", "CsvDataManagement")
                 Screen.ShareHub -> put("type", "ShareHub")
+                is Screen.AiCoach -> {
+
+                    put("type", "AiCoach")
+                    put("initialPrompt", screen.initialPrompt ?: "")
+                }
             }
         }
     },
@@ -549,6 +572,7 @@ private val ScreenSaver = mapSaver(
             "Backup" -> Screen.Backup
             "CsvDataManagement" -> Screen.CsvDataManagement
             "ShareHub" -> Screen.ShareHub
+            "AiCoach" -> Screen.AiCoach(initialPrompt = (map["initialPrompt"] as? String)?.takeIf { it.isNotBlank() })
             else -> Screen.Home
         }
     }

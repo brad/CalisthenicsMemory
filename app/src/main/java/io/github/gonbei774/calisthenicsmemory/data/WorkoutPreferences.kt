@@ -189,6 +189,20 @@ class WorkoutPreferences(context: Context) {
         prefs.edit().putInt(KEY_ISOMETRIC_INTERVAL_SECONDS, seconds).apply()
     }
 
+    /**
+     * Gemini APIキーを取得
+     */
+    fun getGeminiApiKey(): String {
+        return prefs.getString(KEY_GEMINI_API_KEY, "") ?: ""
+    }
+
+    /**
+     * Gemini APIキーを保存
+     */
+    fun setGeminiApiKey(apiKey: String) {
+        prefs.edit().putString(KEY_GEMINI_API_KEY, apiKey).apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "workout_preferences"
         private const val KEY_START_COUNTDOWN = "start_countdown"
@@ -202,6 +216,7 @@ class WorkoutPreferences(context: Context) {
         private const val KEY_DYNAMIC_COUNT_SOUND_ENABLED = "dynamic_count_sound_enabled"
         private const val KEY_ISOMETRIC_INTERVAL_SOUND_ENABLED = "isometric_interval_sound_enabled"
         private const val KEY_ISOMETRIC_INTERVAL_SECONDS = "isometric_interval_seconds"
+        private const val KEY_GEMINI_API_KEY = "gemini_api_key"
 
         const val DEFAULT_START_COUNTDOWN = 5
         const val DEFAULT_SET_INTERVAL = 240

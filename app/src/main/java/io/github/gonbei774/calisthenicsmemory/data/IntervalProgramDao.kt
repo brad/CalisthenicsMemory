@@ -8,6 +8,8 @@ interface IntervalProgramDao {
 
     @Query("SELECT * FROM interval_programs ORDER BY id DESC")
     fun getAllPrograms(): Flow<List<IntervalProgram>>
+    @Query("SELECT * FROM interval_programs")
+    suspend fun getAllIntervalProgramsSync(): List<IntervalProgram>
 
     @Query("SELECT * FROM interval_programs WHERE id = :id")
     suspend fun getProgramById(id: Long): IntervalProgram?

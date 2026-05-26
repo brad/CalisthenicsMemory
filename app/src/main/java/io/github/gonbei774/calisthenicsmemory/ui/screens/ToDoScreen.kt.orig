@@ -18,7 +18,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
@@ -63,8 +62,7 @@ fun ToDoScreen(
     onNavigateToRecord: (Long) -> Unit,
     onNavigateToWorkout: (Long) -> Unit,
     onNavigateToProgramPreview: (Long) -> Unit,
-    onNavigateToIntervalPreview: (Long) -> Unit,
-    onNavigateToAiCoach: () -> Unit = {}
+    onNavigateToIntervalPreview: (Long) -> Unit
 ) {
     val appColors = LocalAppColors.current
     val todoTasks by viewModel.todoTasks.collectAsState()
@@ -172,16 +170,8 @@ fun ToDoScreen(
                             text = stringResource(R.string.todo_title),
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            modifier = Modifier.weight(1f)
+                            color = Color.White
                         )
-                        IconButton(onClick = onNavigateToAiCoach) {
-                            Icon(
-                                Icons.Default.Info,
-                                contentDescription = stringResource(R.string.ai_coach_suggestion),
-                                tint = Color.White
-                            )
-                        }
                     }
                 }
             }

@@ -8,6 +8,8 @@ interface ProgramLoopDao {
 
     @Query("SELECT * FROM program_loops WHERE programId = :programId ORDER BY sortOrder ASC")
     fun getLoopsForProgram(programId: Long): Flow<List<ProgramLoop>>
+    @Query("SELECT * FROM program_loops")
+    suspend fun getAllProgramLoopsSync(): List<ProgramLoop>
 
     @Query("SELECT * FROM program_loops WHERE programId = :programId ORDER BY sortOrder ASC")
     suspend fun getLoopsForProgramSync(programId: Long): List<ProgramLoop>

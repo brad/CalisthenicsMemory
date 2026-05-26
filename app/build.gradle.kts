@@ -118,6 +118,8 @@ dependencies {
 
     // Reorderable (drag and drop)
     implementation("sh.calvin.reorderable:reorderable:3.0.0")
+    // Generative AI
+    implementation(libs.generativeai)
 
     // Testing
     testImplementation("junit:junit:4.13.2")

@@ -92,7 +92,8 @@ data class ExportRecord(
     val comment: String,
     val distanceCm: Int? = null,  // 距離（cm、v3で追加）
     val weightG: Int? = null,     // 追加ウエイト（g、v3で追加）
-    val assistanceG: Int? = null  // アシスト量（g、v6で追加）
+    val assistanceG: Int? = null,  // アシスト量（g、v6で追加）
+    val rpe: Int? = null          // RPE (v22 for AI)
 )
 
 @Serializable
@@ -2729,4 +2730,55 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+
+    /**
+     * Get all data as JSON for AI context
+     */
+    suspend fun getAllDataAsJson(): String {
+        return withContext(Dispatchers.IO) {
+            val groupsList = groupDao.getAllGroupsSync()
+            val exercisesList = exerciseDao.getAllExercisesSync()
+            val recordsList = recordDao.getAllRecordsSync()
+            val programsList = programDao.getAllProgramsSync()
+            val programExercisesList = programExerciseDao.getAllProgramExercisesSync()
+            val programLoopsList = programLoopDao.getAllProgramLoopsSync()
+            val intervalProgramsList = intervalProgramDao.getAllIntervalProgramsSync()
+            val intervalExercisesList = intervalProgramExerciseDao.getAllIntervalProgramExercisesSync()
+            val intervalRecordsList = intervalRecordDao.getAllIntervalRecordsSync()
+            val todoTasksList = todoTaskDao.getAllTodoTasksSync()
+
+            val backupData = BackupData(
+                version = 22,
+                exportDate = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                app = "Calisthenics Memory",
+                groups = groupsList.map { ExportGroup(it.id, it.name, it.displayOrder) },
+                exercises = exercisesList.map {
+                    ExportExercise(it.id, it.name, it.type, it.group, it.sortOrder, it.displayOrder,
+                        it.laterality, it.targetSets, it.targetValue, it.isFavorite, it.restInterval,
+                        it.repDuration, it.distanceTrackingEnabled, it.weightTrackingEnabled,
+                        it.assistanceTrackingEnabled, it.description)
+                },
+                records = recordsList.map {
+                    ExportRecord(it.id, it.exerciseId, it.valueRight, it.valueLeft, it.setNumber,
+                        it.date, it.time, it.comment, it.distanceCm, it.weightG, it.assistanceG, it.rpe)
+                },
+                programs = programsList.map { ExportProgram(it.id, it.name) },
+                programExercises = programExercisesList.map {
+                    ExportProgramExercise(it.id, it.programId, it.exerciseId, it.sortOrder, it.sets,
+                        it.targetValue, it.intervalSeconds, it.loopId)
+                },
+                programLoops = programLoopsList.map { ExportProgramLoop(it.id, it.programId, it.sortOrder, it.rounds, it.restBetweenRounds) },
+                intervalPrograms = intervalProgramsList.map {
+                    ExportIntervalProgram(it.id, it.name, it.workSeconds, it.restSeconds, it.rounds, it.roundRestSeconds)
+                },
+                intervalProgramExercises = intervalExercisesList.map { ExportIntervalProgramExercise(it.id, it.programId, it.exerciseId, it.sortOrder) },
+                intervalRecords = intervalRecordsList.map {
+                    ExportIntervalRecord(it.id, it.programName, it.date, it.time, it.workSeconds, it.restSeconds, it.rounds, it.roundRestSeconds, it.completedRounds, it.completedExercisesInLastRound, it.exercisesJson, it.comment)
+                },
+                todoTasks = todoTasksList.map { ExportTodoTask(it.id, it.type, it.referenceId, it.sortOrder, it.repeatDays, it.lastCompletedDate) }
+            )
+
+            Json.encodeToString(backupData)
+        }
+    }
 }

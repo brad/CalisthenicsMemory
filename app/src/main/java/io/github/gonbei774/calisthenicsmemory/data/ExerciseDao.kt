@@ -8,6 +8,8 @@ interface ExerciseDao {
 
     @Query("SELECT * FROM exercises ORDER BY name ASC")
     fun getAllExercises(): Flow<List<Exercise>>
+    @Query("SELECT * FROM exercises")
+    suspend fun getAllExercisesSync(): List<Exercise>
 
     @Query("SELECT * FROM exercises WHERE id = :id")
     suspend fun getExerciseById(id: Long): Exercise?

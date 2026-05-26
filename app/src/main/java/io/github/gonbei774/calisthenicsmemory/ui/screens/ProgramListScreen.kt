@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,7 +39,8 @@ fun ProgramListScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEdit: (Long?) -> Unit,  // null = new program
     onNavigateToExecute: (Long) -> Unit,
-    onNavigateToResume: (Long) -> Unit = onNavigateToExecute  // デフォルトは通常実行と同じ
+    onNavigateToResume: (Long) -> Unit = onNavigateToExecute,
+    onNavigateToAiCoach: () -> Unit = {}
 ) {
     val appColors = LocalAppColors.current
     val programs by viewModel.programs.collectAsState()
@@ -71,8 +73,16 @@ fun ProgramListScreen(
                         text = stringResource(R.string.program_list_title),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = Color.White,
+                        modifier = Modifier.weight(1f)
                     )
+                    IconButton(onClick = onNavigateToAiCoach) {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = stringResource(R.string.ai_coach_suggestion),
+                            tint = Color.White
+                        )
+                    }
                 }
             }
         },
@@ -101,27 +111,22 @@ fun ProgramListScreen(
                 )
             }
         } else {
-            // Program list with swipe-to-delete
-            val copySuffix = stringResource(R.string.program_copy_suffix)
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(vertical = 16.dp)
             ) {
-                items(
-                    items = programs,
-                    key = { it.id }
-                ) { program ->
-                    ProgramListItem(
+                items(programs, key = { it.id }) { program ->
+                    ProgramItem(
                         program = program,
-                        hasSavedState = savedProgramId == program.id,
+                        isSaved = program.id == savedProgramId,
+                        onClick = { onNavigateToExecute(program.id) },
                         onEdit = { onNavigateToEdit(program.id) },
-                        onExecute = { onNavigateToExecute(program.id) },
-                        onResume = { onNavigateToResume(program.id) },
                         onDelete = { viewModel.deleteProgram(program.id) },
-                        onDuplicate = { viewModel.duplicateProgram(program.id, copySuffix) }
+                        onResume = { onNavigateToResume(program.id) }
                     )
                 }
             }
@@ -131,216 +136,88 @@ fun ProgramListScreen(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ProgramListItem(
+fun ProgramItem(
     program: Program,
-    hasSavedState: Boolean,
+    isSaved: Boolean,
+    onClick: () -> Unit,
     onEdit: () -> Unit,
-    onExecute: () -> Unit,
-    onResume: () -> Unit,
     onDelete: () -> Unit,
-    onDuplicate: () -> Unit
+    onResume: () -> Unit
 ) {
     val appColors = LocalAppColors.current
-    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
-    var showContextMenu by remember { mutableStateOf(false) }
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart) {
-                showDeleteConfirmDialog = true
-                false  // Don't dismiss yet, show confirmation dialog first
-            } else {
-                false
-            }
-        }
-    )
+    var showMenu by remember { mutableStateOf(false) }
 
-    // Delete confirmation dialog
-    if (showDeleteConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirmDialog = false },
-            containerColor = appColors.cardBackground,
-            title = {
-                Text(
-                    text = stringResource(R.string.delete_program),
-                    color = appColors.textPrimary,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Text(
-                    text = stringResource(R.string.delete_program_warning, program.name),
-                    color = appColors.textTertiary
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteConfirmDialog = false
-                        onDelete()
-                    }
-                ) {
-                    Text(stringResource(R.string.delete), color = Red600)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirmDialog = false }) {
-                    Text(stringResource(R.string.cancel), color = appColors.textSecondary)
-                }
-            }
-        )
-    }
-
-    SwipeToDismissBox(
-        state = dismissState,
-        backgroundContent = {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        color = Red600,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .padding(horizontal = 16.dp),
-                contentAlignment = Alignment.CenterEnd
-            ) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = stringResource(R.string.delete),
-                    tint = appColors.textPrimary
-                )
-            }
-        },
-        enableDismissFromStartToEnd = false,
-        enableDismissFromEndToStart = true
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = if (isSaved) onResume else onClick,
+                onLongClick = { showMenu = true }
+            ),
+        colors = CardDefaults.cardColors(
+            containerColor = appColors.cardBackground
+        ),
+        shape = RoundedCornerShape(12.dp)
     ) {
         Box {
-            Card(
+            Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .combinedClickable(
-                        onClick = { },
-                        onLongClick = { showContextMenu = true }
-                    ),
-                colors = CardDefaults.cardColors(containerColor = appColors.cardBackground),
-                shape = RoundedCornerShape(12.dp)
+                    .padding(20.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Program info
-                    Column(modifier = Modifier.weight(1f)) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = program.name,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = appColors.textPrimary
+                    )
+                    if (isSaved) {
                         Text(
-                            text = program.name,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = appColors.textPrimary
+                            text = stringResource(R.string.program_start),
+                            fontSize = 14.sp,
+                            color = Orange600,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 4.dp)
                         )
                     }
+                }
 
-                    // Edit button
-                    IconButton(
-                        onClick = onEdit,
-                        modifier = Modifier.size(40.dp)
-                    ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    IconButton(onClick = onEdit) {
                         Icon(
                             Icons.Default.Edit,
-                            contentDescription = stringResource(R.string.edit_program),
+                            contentDescription = stringResource(R.string.edit),
                             tint = appColors.textSecondary
                         )
                     }
-
-                    // Resume button (保存された状態がある場合のみ表示)
-                    if (hasSavedState) {
-                        Button(
-                            onClick = onResume,
-                            colors = ButtonDefaults.buttonColors(containerColor = Green600),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                            modifier = Modifier.height(36.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.PlayArrow,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = stringResource(R.string.nav_resume),
-                                fontSize = 12.sp,
-                                color = appColors.textPrimary
-                            )
-                        }
-                    }
-
-                    // Execute button
-                    Button(
-                        onClick = onExecute,
-                        colors = ButtonDefaults.buttonColors(containerColor = Orange600),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                        modifier = Modifier.height(36.dp)
-                    ) {
+                    IconButton(onClick = if (isSaved) onResume else onClick) {
                         Icon(
                             Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = stringResource(R.string.program_start),
-                            fontSize = 12.sp,
-                            color = appColors.textPrimary
+                            contentDescription = stringResource(R.string.program_start),
+                            tint = Orange600
                         )
                     }
                 }
             }
 
-            // Context menu (long press)
             DropdownMenu(
-                expanded = showContextMenu,
-                onDismissRequest = { showContextMenu = false },
-                offset = DpOffset(16.dp, 0.dp),
-                containerColor = appColors.cardBackgroundSecondary
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false },
+                offset = DpOffset(x = 100.dp, y = 0.dp)
             ) {
                 DropdownMenuItem(
-                    text = {
-                        Text(
-                            stringResource(R.string.duplicate_program),
-                            color = appColors.textPrimary
-                        )
-                    },
+                    text = { Text(stringResource(R.string.delete)) },
                     onClick = {
-                        showContextMenu = false
-                        onDuplicate()
-                    },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = null,
-                            tint = appColors.textTertiary
-                        )
-                    }
-                )
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            stringResource(R.string.delete_program),
-                            color = Red600
-                        )
-                    },
-                    onClick = {
-                        showContextMenu = false
-                        showDeleteConfirmDialog = true
+                        showMenu = false
+                        onDelete()
                     },
                     leadingIcon = {
                         Icon(
                             Icons.Default.Delete,
                             contentDescription = null,
-                            tint = Red600
+                            tint = Color.Red
                         )
                     }
                 )

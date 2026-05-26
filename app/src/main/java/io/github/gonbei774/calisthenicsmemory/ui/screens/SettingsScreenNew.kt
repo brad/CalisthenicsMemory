@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import io.github.gonbei774.calisthenicsmemory.BuildConfig
+import io.github.gonbei774.calisthenicsmemory.data.WorkoutPreferences
 import io.github.gonbei774.calisthenicsmemory.R
 import io.github.gonbei774.calisthenicsmemory.data.AppLanguage
 import io.github.gonbei774.calisthenicsmemory.data.AppTheme
@@ -88,6 +89,85 @@ fun SettingsScreenNew(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // ========================================
+            // セクション: AI設定
+            // ========================================
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.ai_coach_settings_title),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = appColors.textPrimary,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.ai_context_description),
+                        fontSize = 14.sp,
+                        color = appColors.textSecondary,
+                        lineHeight = 20.sp
+                    )
+                }
+            }
+
+            item {
+                val workoutPrefs = remember { WorkoutPreferences(context) }
+                var apiKey by remember { mutableStateOf(workoutPrefs.getGeminiApiKey()) }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = appColors.cardBackground
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = apiKey,
+                            onValueChange = {
+                                apiKey = it
+                                workoutPrefs.setGeminiApiKey(it)
+                            },
+                            label = { Text(stringResource(R.string.gemini_api_key)) },
+                            placeholder = { Text(stringResource(R.string.gemini_api_key_hint)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = appColors.textPrimary,
+                                unfocusedTextColor = appColors.textPrimary,
+                                focusedBorderColor = Purple600,
+                                unfocusedBorderColor = appColors.textSecondary
+                            )
+                        )
+
+                        Text(
+                            text = stringResource(R.string.gemini_api_key_info),
+                            fontSize = 12.sp,
+                            color = appColors.textSecondary
+                        )
+
+                        Text(
+                            text = stringResource(R.string.gemini_api_key_link),
+                            fontSize = 14.sp,
+                            color = Blue600,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/app/apikey"))
+                                context.startActivity(intent)
+                            }
+                        )
+                    }
+                }
+            }
+
             // セクション: 言語設定
             // ========================================
 

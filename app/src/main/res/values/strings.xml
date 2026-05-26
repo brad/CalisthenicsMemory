@@ -763,4 +763,13 @@
     <string name="share_import_errors">Errors (%1$d)</string>
     <string name="share_import_count_reused">%1$d reused</string>
     <string name="share_import_count_skipped">%1$d skipped</string>
+    <string name="ai_coach_title">AI Coach</string>
+    <string name="ai_coach_talk">Talk to Coach</string>
+    <string name="ai_coach_suggestion">Get AI Suggestion</string>
+    <string name="ai_coach_settings_title">AI Settings</string>
+    <string name="gemini_api_key">Gemini API Key</string>
+    <string name="gemini_api_key_hint">Enter your Gemini API key</string>
+    <string name="gemini_api_key_info">You can get a free API key from Google AI Studio.</string>
+    <string name="gemini_api_key_link">Get API Key</string>
+    <string name="ai_context_description">The AI coach will analyze your training history to provide personalized advice and workout plans.</string>
 </resources>
