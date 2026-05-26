@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - develop
+      - integrate-gemini-ai-coach-75525426464347838
 
 jobs:
   build:
