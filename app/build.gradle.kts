@@ -31,14 +31,14 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    // Keystore設定を読み込み
+    // Load keystore settings
     val keystorePropertiesFile = rootProject.file("keystore.properties")
     val keystoreProperties = Properties()
     if (keystorePropertiesFile.exists()) {
         keystoreProperties.load(FileInputStream(keystorePropertiesFile))
     }
 
-    // 署名設定
+    // Signing configuration
     signingConfigs {
         create("release") {
             if (keystorePropertiesFile.exists()) {
@@ -57,9 +57,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // リリースビルド時に署名を適用
+            // Apply signing during release build
             signingConfig = signingConfigs.getByName("release")
-            // 依存関係メタデータを無効化（F-Droid要件）
+            // Disable dependency metadata (F-Droid requirement)
             dependenciesInfo {
                 includeInApk = false
                 includeInBundle = false

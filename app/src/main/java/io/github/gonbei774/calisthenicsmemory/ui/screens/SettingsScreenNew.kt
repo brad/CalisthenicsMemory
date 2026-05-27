@@ -89,7 +89,7 @@ fun SettingsScreenNew(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // ========================================
-            // セクション: AI設定
+            // Section: AI Settings
             // ========================================
             item {
                 Column(
@@ -168,10 +168,10 @@ fun SettingsScreenNew(
                 }
             }
 
-            // セクション: 言語設定
+            // Section: Language settings
             // ========================================
 
-            // セクションタイトルと説明
+            // Section title and description
             item {
                 Column(
                     modifier = Modifier
@@ -194,13 +194,13 @@ fun SettingsScreenNew(
                 }
             }
 
-            // 言語選択カード
+            // Language selection card
             item {
                 val languagePrefs = remember { LanguagePreferences(context) }
                 var selectedLanguage by remember { mutableStateOf(languagePrefs.getLanguage()) }
                 var showLanguageDialog by remember { mutableStateOf(false) }
 
-                // 現在のシステム言語を取得
+                // Get current system language
                 val currentLocale = Locale.getDefault().language
 
                 Card(
@@ -242,7 +242,7 @@ fun SettingsScreenNew(
                     }
                 }
 
-                // 言語選択ダイアログ
+                // Language selection dialog
                 if (showLanguageDialog) {
                     AlertDialog(
                         onDismissRequest = { showLanguageDialog = false },
@@ -271,7 +271,7 @@ fun SettingsScreenNew(
                                             android.util.Log.d("SettingsScreen", "Language saved, recreating activity")
                                             showLanguageDialog = false
 
-                                            // Activity を再作成して言語を適用
+                                            // Recreate activity to apply language
                                             (context as? Activity)?.recreate()
                                         }
                                     ) {
@@ -295,10 +295,10 @@ fun SettingsScreenNew(
             }
 
             // ========================================
-            // セクション: テーマ設定
+            // Section: Theme Settings
             // ========================================
 
-            // セクションタイトルと説明
+            // Section title and description
             item {
                 Column(
                     modifier = Modifier
@@ -321,7 +321,7 @@ fun SettingsScreenNew(
                 }
             }
 
-            // テーマ選択カード
+            // Theme selection card
             item {
                 var showThemeDialog by remember { mutableStateOf(false) }
 
@@ -367,7 +367,7 @@ fun SettingsScreenNew(
                     }
                 }
 
-                // テーマ選択ダイアログ
+                // Theme selection dialog
                 if (showThemeDialog) {
                     AlertDialog(
                         onDismissRequest = { showThemeDialog = false },
@@ -419,10 +419,10 @@ fun SettingsScreenNew(
             }
 
             // ========================================
-            // セクション: ワークアウト設定
+            // Section: Workout Settings
             // ========================================
 
-            // セクションタイトルと説明
+            // Section title and description
             item {
                 Column(
                     modifier = Modifier
@@ -445,7 +445,7 @@ fun SettingsScreenNew(
                 }
             }
 
-            // ワークアウト設定カード
+            // Workout Settingscard
             item {
                 val workoutPrefs = remember { io.github.gonbei774.calisthenicsmemory.data.WorkoutPreferences(context) }
                 var prefillEnabled by remember { mutableStateOf(workoutPrefs.isPrefillPreviousRecordEnabled()) }
@@ -462,7 +462,7 @@ fun SettingsScreenNew(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // プリフィル設定
+                    // Prefill settings
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -511,7 +511,7 @@ fun SettingsScreenNew(
                         }
                     }
 
-                    // 開始カウントダウン設定
+                    // Start countdown settings
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -561,7 +561,7 @@ fun SettingsScreenNew(
                         }
                     }
 
-                    // セット間インターバル設定
+                    // Set interval settings
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -610,7 +610,7 @@ fun SettingsScreenNew(
                                     )
                                 )
                             }
-                            // 注意書き
+                            // Note
                             Text(
                                 text = stringResource(R.string.set_interval_note),
                                 fontSize = 12.sp,
@@ -620,7 +620,7 @@ fun SettingsScreenNew(
                         }
                     }
 
-                    // LEDフラッシュ通知設定
+                    // LED flash notification settings
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -671,7 +671,7 @@ fun SettingsScreenNew(
                         }
                     }
 
-                    // 画面オン維持設定
+                    // Keep screen on settings
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -723,7 +723,7 @@ fun SettingsScreenNew(
                     }
                 }
 
-                // 開始カウントダウン設定ダイアログ
+                // Start countdown settingsdialog
                 if (showStartCountdownDialog) {
                     var inputValue by remember { mutableStateOf(startCountdown.toString()) }
 
@@ -772,7 +772,7 @@ fun SettingsScreenNew(
                     )
                 }
 
-                // セット間インターバル設定ダイアログ
+                // Set interval settingsdialog
                 if (showSetIntervalDialog) {
                     var inputValue by remember { mutableStateOf(setInterval.toString()) }
                     val maxInterval = io.github.gonbei774.calisthenicsmemory.data.WorkoutPreferences.MAX_SET_INTERVAL
@@ -790,7 +790,7 @@ fun SettingsScreenNew(
                                 value = inputValue,
                                 onValueChange = { newValue ->
                                     if (newValue.isEmpty() || newValue.all { c -> c.isDigit() }) {
-                                        // 上限チェック
+                                        // Upper limit check
                                         val intValue = newValue.toIntOrNull()
                                         if (intValue == null || intValue <= maxInterval) {
                                             inputValue = newValue
@@ -833,10 +833,10 @@ fun SettingsScreenNew(
             }
 
             // ========================================
-            // セクション: データ管理
+            // Section: Data Management
             // ========================================
 
-            // セクションタイトル
+            // Section title
             item {
                 Text(
                     text = stringResource(R.string.data_management),
@@ -847,7 +847,7 @@ fun SettingsScreenNew(
                 )
             }
 
-            // ナビゲーションカード: 完全バックアップ
+            // Navigation card: Full backup
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -892,7 +892,7 @@ fun SettingsScreenNew(
                 }
             }
 
-            // ナビゲーションカード: 部分データ管理 (CSV)
+            // Navigationcard: Partial Data Management (CSV)
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -937,7 +937,7 @@ fun SettingsScreenNew(
                 }
             }
 
-            // ナビゲーションカード: Share
+            // Navigation card: Share
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -983,10 +983,10 @@ fun SettingsScreenNew(
             }
 
             // ========================================
-            // セクション: アプリ情報
+            // Section: App Info
             // ========================================
 
-            // セクションタイトルと説明
+            // Section title and description
             item {
                 Column(
                     modifier = Modifier
@@ -1009,7 +1009,7 @@ fun SettingsScreenNew(
                 }
             }
 
-            // アプリ情報カード
+            // App Infocard
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -1024,7 +1024,7 @@ fun SettingsScreenNew(
                             .padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // アプリ名と説明（中央揃え）
+                        // App name and description (centered)
                         Column(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
@@ -1043,7 +1043,7 @@ fun SettingsScreenNew(
                             )
                         }
 
-                        // バージョン
+                        // Version
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -1069,7 +1069,7 @@ fun SettingsScreenNew(
                             }
                         }
 
-                        // ソースコード
+                        // Source code
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1093,7 +1093,7 @@ fun SettingsScreenNew(
                             )
                         }
 
-                        // 使用許諾（ライセンス）
+                        // Open source licenses
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1115,7 +1115,7 @@ fun SettingsScreenNew(
                 }
             }
 
-            // 著者カード
+            // Author card
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -1130,14 +1130,14 @@ fun SettingsScreenNew(
                             .padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // セクションタイトル
+                        // Section title
                         Text(
                             text = stringResource(R.string.app_author),
                             fontSize = 14.sp,
                             color = appColors.textSecondary
                         )
 
-                        // 開発者
+                        // Developer
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -1159,7 +1159,7 @@ fun SettingsScreenNew(
                 }
             }
 
-            // フィードバックカード
+            // Feedback card
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -1174,14 +1174,14 @@ fun SettingsScreenNew(
                             .padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // セクションタイトル
+                        // Section title
                         Text(
                             text = stringResource(R.string.app_feedback),
                             fontSize = 14.sp,
                             color = appColors.textSecondary
                         )
 
-                        // Codebergで問題を報告
+                        // Report issue on Codeberg
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1203,7 +1203,7 @@ fun SettingsScreenNew(
                             )
                         }
 
-                        // GitHubで問題を報告
+                        // Report issue on GitHub
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1232,7 +1232,7 @@ fun SettingsScreenNew(
 }
 
 /**
- * CSV種類を多言語化された文字列に変換する関数
+ * Convert CSV type to localized string
  */
 @Composable
 fun getCsvTypeLocalizedString(csvType: CsvType?): String {
@@ -1245,7 +1245,7 @@ fun getCsvTypeLocalizedString(csvType: CsvType?): String {
 }
 
 /**
- * CSV種類を自動判定する関数
+ * Automatically detect CSV type
  */
 fun detectCsvType(csvString: String): CsvType? {
     val firstLine = csvString.lines()
@@ -1261,7 +1261,7 @@ fun detectCsvType(csvString: String): CsvType? {
 }
 
 /**
- * CSVインポートを実行する関数
+ * Execute CSV import
  */
 suspend fun executeCsvImport(
     viewModel: TrainingViewModel,

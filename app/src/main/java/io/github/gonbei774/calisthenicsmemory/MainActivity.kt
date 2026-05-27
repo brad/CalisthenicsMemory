@@ -112,7 +112,7 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Context の言語設定を更新する（全Androidバージョン対応）
+     * Update Context language settings (all Android versions)
      */
     private fun updateBaseContextLocale(context: Context): Context {
         val languagePrefs = LanguagePreferences(context)
@@ -120,7 +120,7 @@ class MainActivity : ComponentActivity() {
 
         android.util.Log.d("MainActivity", "Selected language: ${selectedLanguage.code}")
 
-        // システム設定に従う場合は何もしない
+        // Do nothing if following system settings
         if (selectedLanguage == AppLanguage.SYSTEM) {
             android.util.Log.d("MainActivity", "Using system language")
             return context
@@ -149,8 +149,8 @@ class MainActivity : ComponentActivity() {
 }
 
 /**
- * UiMessageを現在の言語の文字列に変換
- * UI層で文字列リソースを取得することで、言語変更に即座に対応
+ * Convert UiMessage to current language string
+ * Get string resources in UI layer to respond to language changes immediately
  */
 @Composable
 fun UiMessage.toMessageString(): String {
@@ -220,7 +220,7 @@ fun CalisthenicsMemoryApp(
     // Snackbar message handling
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
 
-    // UiMessageを文字列に変換（Composable関数内で実行）
+    // Convert UiMessage to string (execute in Composable function)
     val messageString = snackbarMessage?.toMessageString()
 
     LaunchedEffect(snackbarMessage) {
