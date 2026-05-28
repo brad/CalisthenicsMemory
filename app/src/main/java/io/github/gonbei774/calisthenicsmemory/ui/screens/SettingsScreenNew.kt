@@ -188,7 +188,14 @@ fun SettingsScreenNew(
                         }
 
                         if (showModelDialog) {
-                            val models = listOf("gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro")
+                            val models = listOf(
+                                "gemini-2.5-flash",
+                                "gemini-2.0-flash",
+                                "gemini-2.0-flash-lite-preview",
+                                "gemini-1.5-flash",
+                                "gemini-1.5-pro",
+                                "gemini-1.0-pro"
+                            )
                             AlertDialog(
                                 onDismissRequest = { showModelDialog = false },
                                 title = { Text("Select Gemini Model") },
