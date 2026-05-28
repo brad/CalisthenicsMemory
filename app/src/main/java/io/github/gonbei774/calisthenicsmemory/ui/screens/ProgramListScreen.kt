@@ -13,7 +13,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import io.github.gonbei774.calisthenicsmemory.R
 import io.github.gonbei774.calisthenicsmemory.data.Program
 import io.github.gonbei774.calisthenicsmemory.data.SavedWorkoutState
+import io.github.gonbei774.calisthenicsmemory.data.WorkoutPreferences
 import io.github.gonbei774.calisthenicsmemory.ui.theme.*
 import io.github.gonbei774.calisthenicsmemory.viewmodel.TrainingViewModel
 import androidx.compose.ui.platform.LocalContext
@@ -47,6 +48,8 @@ fun ProgramListScreen(
     val context = LocalContext.current
     val savedWorkoutState = remember { SavedWorkoutState(context) }
     val savedProgramId = savedWorkoutState.getSavedProgramId()
+    val workoutPrefs = remember { WorkoutPreferences(context) }
+    val apiKey = remember { workoutPrefs.getGeminiApiKey() }
 
     Scaffold(
         topBar = {
@@ -76,12 +79,15 @@ fun ProgramListScreen(
                         color = Color.White,
                         modifier = Modifier.weight(1f)
                     )
-                    IconButton(onClick = onNavigateToAiCoach) {
-                        Icon(
-                            Icons.Default.Info,
-                            contentDescription = stringResource(R.string.ai_coach_suggestion),
-                            tint = Color.White
-                        )
+
+                    if (apiKey.isNotBlank()) {
+                        IconButton(onClick = onNavigateToAiCoach) {
+                            Icon(
+                                Icons.Filled.Person,
+                                contentDescription = stringResource(R.string.ai_coach_suggestion),
+                                tint = Color.White
+                            )
+                        }
                     }
                 }
             }

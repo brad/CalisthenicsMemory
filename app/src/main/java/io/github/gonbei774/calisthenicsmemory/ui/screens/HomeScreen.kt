@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -33,6 +34,7 @@ import io.github.gonbei774.calisthenicsmemory.R
 import io.github.gonbei774.calisthenicsmemory.Screen
 import io.github.gonbei774.calisthenicsmemory.data.Exercise
 import io.github.gonbei774.calisthenicsmemory.data.TrainingRecord
+import io.github.gonbei774.calisthenicsmemory.data.WorkoutPreferences
 import io.github.gonbei774.calisthenicsmemory.ui.UiMessage
 import io.github.gonbei774.calisthenicsmemory.ui.theme.*
 import io.github.gonbei774.calisthenicsmemory.viewmodel.TrainingViewModel
@@ -46,16 +48,22 @@ fun HomeScreen(
     val appColors = LocalAppColors.current
     val exercises by viewModel.exercises.collectAsState()
     val records by viewModel.records.collectAsState()
+    val context = LocalContext.current
+    val workoutPrefs = remember { WorkoutPreferences(context) }
+    val apiKey = remember { workoutPrefs.getGeminiApiKey() }
 
     // Filter today's records
     val todayDate = LocalDate.now().toString()
     val todayRecords = remember(records, todayDate) {
         records.filter { it.date == todayDate }
     }
+    val scrollState = rememberScrollState()
+
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(scrollState)
                 .padding(16.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
@@ -71,14 +79,16 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(64.dp))
 
-            // AI Coach Button
-            MainButton(
-                text = stringResource(R.string.ai_coach_talk),
-                color = Purple600.copy(alpha = 0.8f),
-                onClick = { onNavigate(Screen.AiCoach()) }
-            )
+            // AI Coach Button (only if API key is set)
+            if (apiKey.isNotBlank()) {
+                MainButton(
+                    text = stringResource(R.string.ai_coach_talk),
+                    color = Purple600.copy(alpha = 0.8f),
+                    onClick = { onNavigate(Screen.AiCoach()) }
+                )
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             // To Do Button
             MainButton(
@@ -122,6 +132,9 @@ fun HomeScreen(
                 exercises = exercises,
                 onNavigateToView = { onNavigate(Screen.View) }
             )
+
+            // Padding for settings icon
+            Spacer(modifier = Modifier.height(64.dp))
         }
 
         // Settings Icon Button (bottom-right)
