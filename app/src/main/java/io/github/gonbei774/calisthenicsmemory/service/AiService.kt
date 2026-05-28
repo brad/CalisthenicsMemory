@@ -11,8 +11,9 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
     private fun getModel(): GenerativeModel? {
         val apiKey = workoutPreferences.getGeminiApiKey()
         if (apiKey.isBlank()) return null
+        val modelName = workoutPreferences.getGeminiModel()
         return GenerativeModel(
-            modelName = "gemini-1.5-flash",
+            modelName = modelName,
             apiKey = apiKey
         )
     }
@@ -26,10 +27,10 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
                 The app uses a specific JSON format for exercises, programs, and records.
 
                 Current Context (JSON):
-
+                $contextData
 
                 User Request:
-
+                $prompt
 
                 Guidelines:
                 1. Provide helpful, encouraging, and science-based calisthenics advice.

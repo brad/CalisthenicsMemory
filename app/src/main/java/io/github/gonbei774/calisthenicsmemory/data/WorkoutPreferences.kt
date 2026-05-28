@@ -203,6 +203,20 @@ class WorkoutPreferences(context: Context) {
         prefs.edit().putString(KEY_GEMINI_API_KEY, apiKey).apply()
     }
 
+    /**
+     * Geminiモデル名を取得
+     */
+    fun getGeminiModel(): String {
+        return prefs.getString(KEY_GEMINI_MODEL, DEFAULT_GEMINI_MODEL) ?: DEFAULT_GEMINI_MODEL
+    }
+
+    /**
+     * Geminiモデル名を保存
+     */
+    fun setGeminiModel(modelName: String) {
+        prefs.edit().putString(KEY_GEMINI_MODEL, modelName).apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "workout_preferences"
         private const val KEY_START_COUNTDOWN = "start_countdown"
@@ -217,10 +231,12 @@ class WorkoutPreferences(context: Context) {
         private const val KEY_ISOMETRIC_INTERVAL_SOUND_ENABLED = "isometric_interval_sound_enabled"
         private const val KEY_ISOMETRIC_INTERVAL_SECONDS = "isometric_interval_seconds"
         private const val KEY_GEMINI_API_KEY = "gemini_api_key"
+        private const val KEY_GEMINI_MODEL = "gemini_model"
 
         const val DEFAULT_START_COUNTDOWN = 5
         const val DEFAULT_SET_INTERVAL = 240
         const val MAX_SET_INTERVAL = 600  // 10分
         const val DEFAULT_ISOMETRIC_INTERVAL_SECONDS = 10
+        const val DEFAULT_GEMINI_MODEL = "gemini-1.5-flash"
     }
 }
