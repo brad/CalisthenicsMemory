@@ -116,6 +116,8 @@ fun SettingsScreenNew(
             item {
                 val workoutPrefs = remember { WorkoutPreferences(context) }
                 var apiKey by remember { mutableStateOf(workoutPrefs.getGeminiApiKey()) }
+                var selectedModel by remember { mutableStateOf(workoutPrefs.getGeminiModel()) }
+                var showModelDialog by remember { mutableStateOf(false) }
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -147,6 +149,83 @@ fun SettingsScreenNew(
                                 unfocusedBorderColor = appColors.textSecondary
                             )
                         )
+
+                        // Model selection card
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = appColors.cardBackgroundSecondary
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            onClick = { showModelDialog = true }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Gemini Model",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = appColors.textPrimary
+                                    )
+                                    Text(
+                                        text = selectedModel,
+                                        fontSize = 12.sp,
+                                        color = appColors.textSecondary
+                                    )
+                                }
+                                Text(
+                                    text = "▼",
+                                    fontSize = 12.sp,
+                                    color = appColors.textSecondary
+                                )
+                            }
+                        }
+
+                        if (showModelDialog) {
+                            val models = listOf("gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro")
+                            AlertDialog(
+                                onDismissRequest = { showModelDialog = false },
+                                title = { Text("Select Gemini Model") },
+                                text = {
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        models.forEach { model ->
+                                            Card(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = if (selectedModel == model) {
+                                                        Purple600.copy(alpha = 0.3f)
+                                                    } else {
+                                                        appColors.cardBackgroundSecondary
+                                                    }
+                                                ),
+                                                onClick = {
+                                                    selectedModel = model
+                                                    workoutPrefs.setGeminiModel(model)
+                                                    showModelDialog = false
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = model,
+                                                    modifier = Modifier.padding(16.dp),
+                                                    color = appColors.textPrimary
+                                                )
+                                            }
+                                        }
+                                    }
+                                },
+                                confirmButton = {
+                                    TextButton(onClick = { showModelDialog = false }) {
+                                        Text(stringResource(R.string.close))
+                                    }
+                                }
+                            )
+                        }
 
                         Text(
                             text = stringResource(R.string.gemini_api_key_info),
