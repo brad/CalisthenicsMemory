@@ -772,4 +772,7 @@
     <string name="gemini_api_key_info">You can get a free API key from Google AI Studio.</string>
     <string name="gemini_api_key_link">Get API Key</string>
     <string name="ai_context_description">The AI coach will analyze your training history to provide personalized advice and workout plans.</string>
+    <string name="ai_coach_memory">Coach Memory</string>
+    <string name="ai_coach_memory_hint">Enter what you want the coach to remember (e.g., injuries, specific goals, preferred style)</string>
+    <string name="ai_coach_memory_description">This information will be provided to the AI coach in every conversation to help it provide more personalized advice.</string>
 </resources>

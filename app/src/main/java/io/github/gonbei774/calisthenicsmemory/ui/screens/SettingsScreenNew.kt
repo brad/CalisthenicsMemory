@@ -117,6 +117,7 @@ fun SettingsScreenNew(
                 val workoutPrefs = remember { WorkoutPreferences(context) }
                 var apiKey by remember { mutableStateOf(workoutPrefs.getGeminiApiKey()) }
                 var selectedModel by remember { mutableStateOf(workoutPrefs.getGeminiModel()) }
+                var aiMemory by remember { mutableStateOf(workoutPrefs.getAiMemory()) }
                 var showModelDialog by remember { mutableStateOf(false) }
 
                 Card(
@@ -233,6 +234,30 @@ fun SettingsScreenNew(
                                 }
                             )
                         }
+
+                        OutlinedTextField(
+                            value = aiMemory,
+                            onValueChange = {
+                                aiMemory = it
+                                workoutPrefs.setAiMemory(it)
+                            },
+                            label = { Text(stringResource(R.string.ai_coach_memory)) },
+                            placeholder = { Text(stringResource(R.string.ai_coach_memory_hint)) },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
+                            maxLines = 5,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = appColors.textPrimary,
+                                unfocusedTextColor = appColors.textPrimary,
+                                focusedBorderColor = Purple600,
+                                unfocusedBorderColor = appColors.textSecondary
+                            )
+                        )
+
+                        Text(
+                            text = stringResource(R.string.ai_coach_memory_description),
+                            fontSize = 12.sp,
+                            color = appColors.textSecondary
+                        )
 
                         Text(
                             text = stringResource(R.string.gemini_api_key_info),

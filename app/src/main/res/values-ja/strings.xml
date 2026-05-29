@@ -770,4 +770,7 @@
     <string name="nav_check_set">セットを完了にする</string>
     <string name="nav_uncheck_set">セットを未実行に戻す</string>
 
+    <string name="ai_coach_memory">コーチの「記憶」</string>
+    <string name="ai_coach_memory_hint">コーチに覚えておいてほしいこと（怪我の履歴、特定の目標、好みのスタイルなど）を入力してください</string>
+    <string name="ai_coach_memory_description">この情報はすべての会話でAIコーチに提供され、よりパーソナライズされたアドバイスを行うために使用されます。</string>
 </resources>

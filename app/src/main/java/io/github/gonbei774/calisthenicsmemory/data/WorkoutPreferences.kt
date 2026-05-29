@@ -217,6 +217,20 @@ class WorkoutPreferences(context: Context) {
         prefs.edit().putString(KEY_GEMINI_MODEL, modelName).apply()
     }
 
+    /**
+     * AI Coachの「記憶」を取得
+     */
+    fun getAiMemory(): String {
+        return prefs.getString(KEY_AI_MEMORY, "") ?: ""
+    }
+
+    /**
+     * AI Coachの「記憶」を保存
+     */
+    fun setAiMemory(memory: String) {
+        prefs.edit().putString(KEY_AI_MEMORY, memory).apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "workout_preferences"
         private const val KEY_START_COUNTDOWN = "start_countdown"
@@ -232,6 +246,7 @@ class WorkoutPreferences(context: Context) {
         private const val KEY_ISOMETRIC_INTERVAL_SECONDS = "isometric_interval_seconds"
         private const val KEY_GEMINI_API_KEY = "gemini_api_key"
         private const val KEY_GEMINI_MODEL = "gemini_model"
+        private const val KEY_AI_MEMORY = "ai_memory"
 
         const val DEFAULT_START_COUNTDOWN = 5
         const val DEFAULT_SET_INTERVAL = 240
