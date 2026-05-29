@@ -48,6 +48,12 @@ android {
                 keyPassword = keystoreProperties["keyPassword"].toString()
             }
         }
+        create("debugConfig") {
+            storeFile = file(System.getenv("RUNNER_TEMP") + "/debug-keystore.jks")
+            storePassword = System.getenv("KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("KEY_ALIAS")
+            keyPassword = System.getenv("KEY_PASSWORD")
+        }
     }
 
     buildTypes {
@@ -64,6 +70,9 @@ android {
                 includeInApk = false
                 includeInBundle = false
             }
+        }
+        debug {
+            signingConfig = signingConfigs.getByName("debugConfig")
         }
     }
 
