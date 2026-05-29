@@ -18,9 +18,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         IntervalProgram::class,
         IntervalProgramExercise::class,
         IntervalRecord::class,
-        TodoTask::class
+        TodoTask::class,
+        AiThread::class,
+        AiMessage::class
     ],
-    version = 22,
+    version = 23,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -34,6 +36,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun intervalProgramExerciseDao(): IntervalProgramExerciseDao
     abstract fun intervalRecordDao(): IntervalRecordDao
     abstract fun todoTaskDao(): TodoTaskDao
+    abstract fun aiDao(): AiDao
 
     companion object {
         @Volatile
@@ -51,6 +54,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17,
                         MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21,
                         MIGRATION_21_22
+                        , MIGRATION_22_23
                     )
                     .fallbackToDestructiveMigration()
                     .build()
@@ -172,6 +176,15 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_21_22 = object : Migration(21, 22) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("ALTER TABLE training_records ADD COLUMN rpe INTEGER")
+            }
+        }
+
+        // Migration 22 -> 23: add AI threads and messages
+        val MIGRATION_22_23 = object : Migration(22, 23) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("CREATE TABLE IF NOT EXISTS ai_threads (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, title TEXT NOT NULL, createdAt INTEGER NOT NULL)")
+                database.execSQL("CREATE TABLE IF NOT EXISTS ai_messages (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, threadId INTEGER NOT NULL, text TEXT NOT NULL, isUser INTEGER NOT NULL, timestamp INTEGER NOT NULL, FOREIGN KEY (threadId) REFERENCES ai_threads(id) ON DELETE CASCADE)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_ai_messages_threadId ON ai_messages(threadId)")
             }
         }
     }

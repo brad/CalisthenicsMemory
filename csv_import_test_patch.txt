@@ -1,0 +1,52 @@
+<<<<<<< SEARCH
+import io.github.gonbei774.calisthenicsmemory.data.*
+import io.github.gonbei774.calisthenicsmemory.viewmodel.CsvImportReport
+import kotlinx.coroutines.runBlocking
+=======
+import io.github.gonbei774.calisthenicsmemory.data.*
+import io.github.gonbei774.calisthenicsmemory.viewmodel.CsvImportReport
+import io.github.gonbei774.calisthenicsmemory.viewmodel.CsvType
+import kotlinx.coroutines.runBlocking
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+        val lines = csvString.lines().filter { it.isNotBlank() && !it.startsWith("#") }
+        if (lines.isEmpty()) {
+            return CsvImportReport("Groups", 0, 0, 0, emptyList(), emptyList())
+        }
+=======
+        val lines = csvString.lines().filter { it.isNotBlank() && !it.startsWith("#") }
+        if (lines.isEmpty()) {
+            return CsvImportReport(CsvType.GROUPS, 0, 0, 0, emptyList(), emptyList())
+        }
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+        return CsvImportReport("Groups", successCount, skippedCount, errorCount, skippedItems, errors)
+    }
+
+    private suspend fun importExercisesCsv(csvString: String): CsvImportReport {
+=======
+        return CsvImportReport(CsvType.GROUPS, successCount, skippedCount, errorCount, skippedItems, errors)
+    }
+
+    private suspend fun importExercisesCsv(csvString: String): CsvImportReport {
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+        val lines = csvString.lines().filter { it.isNotBlank() && !it.startsWith("#") }
+        if (lines.isEmpty()) {
+            return CsvImportReport("Exercises", 0, 0, 0, emptyList(), emptyList())
+        }
+=======
+        val lines = csvString.lines().filter { it.isNotBlank() && !it.startsWith("#") }
+        if (lines.isEmpty()) {
+            return CsvImportReport(CsvType.EXERCISES, 0, 0, 0, emptyList(), emptyList())
+        }
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+        return CsvImportReport("Exercises", successCount, skippedCount, errorCount, skippedItems, errors)
+    }
+}
+=======
+        return CsvImportReport(CsvType.EXERCISES, successCount, skippedCount, errorCount, skippedItems, errors)
+    }
+}
+>>>>>>> REPLACE
