@@ -453,7 +453,11 @@ fun CalisthenicsMemoryApp(
                         initialPrompt = (currentScreen as Screen.AiCoach).initialPrompt,
                         viewModel = aiViewModel,
                         trainingViewModel = viewModel,
-                        onNavigateBack = { currentScreen = Screen.Home }
+                        onNavigateBack = { currentScreen = Screen.Home },
+                        onNavigateToProgramEdit = { id -> currentScreen = Screen.ProgramEdit(id) },
+                        onNavigateToProgramExecution = { id -> currentScreen = Screen.ProgramExecution(id) },
+                        onNavigateToIntervalEdit = { id -> currentScreen = Screen.IntervalEdit(id) },
+                        onNavigateToIntervalExecution = { id -> currentScreen = Screen.IntervalExecution(id) }
                     )
                 }
             }
