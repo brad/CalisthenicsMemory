@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.gonbei774.calisthenicsmemory.R
 import io.github.gonbei774.calisthenicsmemory.data.AiMessage
+import io.github.gonbei774.calisthenicsmemory.viewmodel.CommunityShareData
+import kotlinx.serialization.json.Json
 import io.github.gonbei774.calisthenicsmemory.ui.theme.LocalAppColors
 import io.github.gonbei774.calisthenicsmemory.ui.theme.Purple600
 import io.github.gonbei774.calisthenicsmemory.ui.theme.Slate600
@@ -37,6 +39,10 @@ fun AiCoachScreen(
     viewModel: AiViewModel,
     trainingViewModel: TrainingViewModel,
     onNavigateBack: () -> Unit,
+    onNavigateToProgramEdit: (Long) -> Unit = {},
+    onNavigateToProgramExecution: (Long) -> Unit = {},
+    onNavigateToIntervalEdit: (Long) -> Unit = {},
+    onNavigateToIntervalExecution: (Long) -> Unit = {},
     initialPrompt: String? = null
 ) {
     val appColors = LocalAppColors.current
@@ -45,6 +51,7 @@ fun AiCoachScreen(
     val currentThreadId by viewModel.currentThreadId.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     var inputText by remember { mutableStateOf("") }
+    var suggestedWorkoutJson by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -193,7 +200,7 @@ fun AiCoachScreen(
                     contentPadding = PaddingValues(vertical = 16.dp)
                 ) {
                     items(chatMessages) { message ->
-                        ChatBubble(message)
+                        ChatBubble(message) { json -> suggestedWorkoutJson = json }
                     }
                     if (isLoading) {
                         item {
@@ -255,6 +262,94 @@ fun AiCoachScreen(
             }
         }
     }
+
+    if (suggestedWorkoutJson != null) {
+        val json = Json { ignoreUnknownKeys = true }
+        val shareData = try {
+            json.decodeFromString<CommunityShareData>(suggestedWorkoutJson!!)
+        } catch (e: Exception) {
+            null
+        }
+
+        if (shareData != null) {
+            AlertDialog(
+                onDismissRequest = { suggestedWorkoutJson = null },
+                title = { Text(stringResource(R.string.ai_coach_suggested_workout)) },
+                text = {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        shareData.data.programs.forEach { program ->
+                            item {
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = appColors.cardBackground)
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp)) {
+                                        Text(text = program.name, fontWeight = FontWeight.Bold, color = appColors.textPrimary)
+                                        program.exercises.forEach { ex ->
+                                            Text(
+                                                text = "${ex.exerciseName} (${ex.sets} sets)",
+                                                fontSize = 14.sp,
+                                                color = appColors.textSecondary
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        shareData.data.intervalPrograms.forEach { program ->
+                            item {
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = appColors.cardBackground)
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp)) {
+                                        Text(text = program.name, fontWeight = FontWeight.Bold, color = appColors.textPrimary)
+                                        Text(
+                                            text = "Interval: ${program.workSeconds}s / ${program.restSeconds}s",
+                                            fontSize = 14.sp,
+                                            color = appColors.textSecondary
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        scope.launch {
+                            val report = trainingViewModel.importCommunityShare(suggestedWorkoutJson!!)
+                            suggestedWorkoutJson = null
+                            if (report.importedProgramIds.isNotEmpty()) {
+                                onNavigateToProgramExecution(report.importedProgramIds.first())
+                            } else if (report.importedIntervalProgramIds.isNotEmpty()) {
+                                onNavigateToIntervalExecution(report.importedIntervalProgramIds.first())
+                            }
+                        }
+                    }) {
+                        Text(stringResource(R.string.ai_coach_start_workout))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        scope.launch {
+                            val report = trainingViewModel.importCommunityShare(suggestedWorkoutJson!!)
+                            suggestedWorkoutJson = null
+                            if (report.importedProgramIds.isNotEmpty()) {
+                                onNavigateToProgramEdit(report.importedProgramIds.first())
+                            } else if (report.importedIntervalProgramIds.isNotEmpty()) {
+                                onNavigateToIntervalEdit(report.importedIntervalProgramIds.first())
+                            }
+                        }
+                    }) {
+                        Text(stringResource(R.string.ai_coach_edit_workout))
+                    }
+                }
+            )
+        }
+    }
+
     if (showMemoryDialog) {
         var memoryText by remember { mutableStateOf(viewModel.getAiMemory()) }
         AlertDialog(
@@ -298,33 +393,93 @@ fun AiCoachScreen(
     }
 }
 
+
+
+fun extractWorkoutJson(text: String): String? {
+    val startIndex = text.indexOf("{\n  \"formatVersion\":")
+    if (startIndex == -1) {
+        // Try a more flexible search
+        val flexibleStart = text.indexOf("{\"formatVersion\":")
+        if (flexibleStart == -1) return null
+
+        var braceCount = 0
+        var endIndex = -1
+        for (i in flexibleStart until text.length) {
+            if (text[i] == '{') braceCount++
+            else if (text[i] == '}') braceCount--
+
+            if (braceCount == 0) {
+                endIndex = i + 1
+                break
+            }
+        }
+        return if (endIndex != -1) text.substring(flexibleStart, endIndex) else null
+    }
+
+    var braceCount = 0
+    var endIndex = -1
+    for (i in startIndex until text.length) {
+        if (text[i] == '{') braceCount++
+        else if (text[i] == '}') braceCount--
+
+        if (braceCount == 0) {
+            endIndex = i + 1
+            break
+        }
+    }
+    return if (endIndex != -1) text.substring(startIndex, endIndex) else null
+}
+
 @Composable
-fun ChatBubble(message: AiMessage) {
+fun ChatBubble(
+    message: AiMessage,
+    onReviewSuggestion: (String) -> Unit = {}
+) {
     val appColors = LocalAppColors.current
     val alignment = if (message.isUser) Alignment.CenterEnd else Alignment.CenterStart
     val backgroundColor = if (message.isUser) Purple600 else appColors.cardBackground
     val textColor = if (message.isUser) Color.White else appColors.textPrimary
 
+    val workoutJson = if (!message.isUser) extractWorkoutJson(message.text) else null
+    val displayText = if (workoutJson != null) message.text.replace(workoutJson, "").trim() else message.text
+
     Box(
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = alignment
     ) {
-        Surface(
-            color = backgroundColor,
-            shape = RoundedCornerShape(
-                topStart = 16.dp,
-                topEnd = 16.dp,
-                bottomStart = if (message.isUser) 16.dp else 0.dp,
-                bottomEnd = if (message.isUser) 0.dp else 16.dp
-            ),
-            tonalElevation = 1.dp
+        Column(
+            horizontalAlignment = if (message.isUser) Alignment.End else Alignment.Start,
+            modifier = Modifier.padding(vertical = 4.dp)
         ) {
-            Text(
-                text = message.text,
-                color = textColor,
-                modifier = Modifier.padding(12.dp),
-                fontSize = 16.sp
-            )
+            Surface(
+                color = backgroundColor,
+                shape = RoundedCornerShape(
+                    topStart = 16.dp,
+                    topEnd = 16.dp,
+                    bottomStart = if (message.isUser) 16.dp else 0.dp,
+                    bottomEnd = if (message.isUser) 0.dp else 16.dp
+                ),
+                tonalElevation = 1.dp
+            ) {
+                Text(
+                    text = displayText,
+                    color = textColor,
+                    modifier = Modifier.padding(12.dp),
+                    fontSize = 16.sp
+                )
+            }
+
+            if (workoutJson != null) {
+                Button(
+                    onClick = { onReviewSuggestion(workoutJson) },
+                    modifier = Modifier.padding(top = 4.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Purple600)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.ai_coach_review_suggestion))
+                }
+            }
         }
     }
 }

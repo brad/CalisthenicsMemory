@@ -98,6 +98,8 @@ data class CommunityShareImportReport(
     val programsSkipped: Int = 0,
     val intervalProgramsAdded: Int = 0,
     val intervalProgramsSkipped: Int = 0,
+    val importedProgramIds: List<Long> = emptyList(),
+    val importedIntervalProgramIds: List<Long> = emptyList(),
     val errors: List<String> = emptyList()
 )
 

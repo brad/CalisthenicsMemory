@@ -2566,6 +2566,8 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
             var programsSkipped = 0
             var intervalProgramsAdded = 0
             var intervalProgramsSkipped = 0
+            val importedProgramIds = mutableListOf<Long>()
+            val importedIntervalProgramIds = mutableListOf<Long>()
 
             // Get current maximum displayOrder
             var nextDisplayOrder = exerciseDao.getMaxDisplayOrder() + 1
@@ -2659,6 +2661,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     )
                 }
 
+                importedProgramIds.add(newProgramId)
                 programsAdded++
             }
 
@@ -2694,6 +2697,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     )
                 }
 
+                importedIntervalProgramIds.add(newIntervalId)
                 intervalProgramsAdded++
             }
 
@@ -2705,7 +2709,9 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                 programsAdded = programsAdded,
                 programsSkipped = programsSkipped,
                 intervalProgramsAdded = intervalProgramsAdded,
-                intervalProgramsSkipped = intervalProgramsSkipped
+                intervalProgramsSkipped = intervalProgramsSkipped,
+                importedProgramIds = importedProgramIds,
+                importedIntervalProgramIds = importedIntervalProgramIds
             )
 
             withContext(Dispatchers.Main) {
