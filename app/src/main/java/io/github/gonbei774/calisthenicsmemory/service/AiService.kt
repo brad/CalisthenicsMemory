@@ -18,9 +18,19 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
         )
     }
 
-    suspend fun generateResponse(prompt: String, contextData: String): String? {
+    suspend fun generateResponse(
+        prompt: String,
+        contextData: String,
+        history: List<io.github.gonbei774.calisthenicsmemory.data.AiMessage> = emptyList()
+    ): String? {
         return withContext(Dispatchers.IO) {
             val model = getModel() ?: return@withContext "Please set your Gemini API Key in Settings first."
+
+            val historyPrompt = if (history.isNotEmpty()) {
+                "\nPrevious Conversation History:\n" + history.joinToString("\n") {
+                    (if (it.isUser) "User: " else "Coach: ") + it.text
+                } + "\n"
+            } else ""
 
             val fullPrompt = """
                 You are a professional calisthenics coach assistant for the "Calisthenics Memory" app.
@@ -28,7 +38,7 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
 
                 Current Context (JSON):
                 $contextData
-
+                $historyPrompt
                 User Request:
                 $prompt
 
@@ -40,6 +50,7 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
                 5. Always prioritize safety and progressive overload.
                 6. Keep responses concise and focused on calisthenics.
                 7. If analyzing history, look for plateaus (3+ weeks without improvement) and suggest deloads or intensity adjustments.
+                8. Refer to the previous conversation history if it's provided to maintain context.
             """.trimIndent()
 
             try {

@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.gonbei774.calisthenicsmemory.data.*
 import io.github.gonbei774.calisthenicsmemory.viewmodel.CsvImportReport
+import io.github.gonbei774.calisthenicsmemory.viewmodel.CsvType
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
@@ -226,7 +227,7 @@ class CsvImportTest {
 
         val lines = csvString.lines().filter { it.isNotBlank() && !it.startsWith("#") }
         if (lines.isEmpty()) {
-            return CsvImportReport("Groups", 0, 0, 0, emptyList(), emptyList())
+            return CsvImportReport(CsvType.GROUPS, 0, 0, 0, emptyList(), emptyList())
         }
 
         val dataLines = lines.drop(1) // Skip header
@@ -256,7 +257,7 @@ class CsvImportTest {
             }
         }
 
-        return CsvImportReport("Groups", successCount, skippedCount, errorCount, skippedItems, errors)
+        return CsvImportReport(CsvType.GROUPS, successCount, skippedCount, errorCount, skippedItems, errors)
     }
 
     private suspend fun importExercisesCsv(csvString: String): CsvImportReport {
@@ -268,7 +269,7 @@ class CsvImportTest {
 
         val lines = csvString.lines().filter { it.isNotBlank() && !it.startsWith("#") }
         if (lines.isEmpty()) {
-            return CsvImportReport("Exercises", 0, 0, 0, emptyList(), emptyList())
+            return CsvImportReport(CsvType.EXERCISES, 0, 0, 0, emptyList(), emptyList())
         }
 
         val dataLines = lines.drop(1)
@@ -346,6 +347,6 @@ class CsvImportTest {
             }
         }
 
-        return CsvImportReport("Exercises", successCount, skippedCount, errorCount, skippedItems, errors)
+        return CsvImportReport(CsvType.EXERCISES, successCount, skippedCount, errorCount, skippedItems, errors)
     }
 }
