@@ -28,6 +28,7 @@ import io.github.gonbei774.calisthenicsmemory.ui.theme.Purple600
 import io.github.gonbei774.calisthenicsmemory.ui.theme.Slate600
 import io.github.gonbei774.calisthenicsmemory.viewmodel.AiViewModel
 import io.github.gonbei774.calisthenicsmemory.viewmodel.TrainingViewModel
+import androidx.compose.material.icons.filled.Face
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,6 +48,7 @@ fun AiCoachScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    var showMemoryDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(initialPrompt) {
         if (initialPrompt != null && currentThreadId == null) {
@@ -75,6 +77,17 @@ fun AiCoachScreen(
                     selected = currentThreadId == null,
                     onClick = {
                         viewModel.startNewThread()
+                        scope.launch { drawerState.close() }
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = appColors.textTertiary.copy(alpha = 0.2f))
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Face, contentDescription = null) },
+                    label = { Text(stringResource(R.string.ai_coach_memory)) },
+                    selected = false,
+                    onClick = {
+                        showMemoryDialog = true
                         scope.launch { drawerState.close() }
                     },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
@@ -241,6 +254,47 @@ fun AiCoachScreen(
                 }
             }
         }
+    }
+    if (showMemoryDialog) {
+        var memoryText by remember { mutableStateOf(viewModel.getAiMemory()) }
+        AlertDialog(
+            onDismissRequest = { showMemoryDialog = false },
+            title = { Text(stringResource(R.string.ai_coach_memory)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = stringResource(R.string.ai_coach_memory_description),
+                        fontSize = 12.sp,
+                        color = appColors.textSecondary
+                    )
+                    OutlinedTextField(
+                        value = memoryText,
+                        onValueChange = { memoryText = it },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp),
+                        placeholder = { Text(stringResource(R.string.ai_coach_memory_hint)) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = appColors.textPrimary,
+                            unfocusedTextColor = appColors.textPrimary,
+                            focusedBorderColor = Purple600,
+                            unfocusedBorderColor = appColors.textSecondary
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.updateAiMemory(memoryText)
+                    showMemoryDialog = false
+                }) {
+                    Text(stringResource(R.string.save))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMemoryDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
     }
 }
 

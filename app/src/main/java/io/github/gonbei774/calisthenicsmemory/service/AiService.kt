@@ -32,10 +32,15 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
                 } + "\n"
             } else ""
 
+            val aiMemory = workoutPreferences.getAiMemory()
+            val aiMemoryPrompt = if (aiMemory.isNotBlank()) {
+                "\nCoach Memory (Your knowledge about the user):\n$aiMemory\n"
+            } else ""
+
             val fullPrompt = """
                 You are a professional calisthenics coach assistant for the "Calisthenics Memory" app.
                 The app uses a specific JSON format for exercises, programs, and records.
-
+                $aiMemoryPrompt
                 Current Context (JSON):
                 $contextData
                 $historyPrompt

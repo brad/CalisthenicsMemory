@@ -96,6 +96,14 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    fun getAiMemory(): String {
+        return workoutPreferences.getAiMemory()
+    }
+
+    fun updateAiMemory(memory: String) {
+        workoutPreferences.setAiMemory(memory)
+    }
 }
 
 // Keeping ChatMessage data class if it is used elsewhere for compatibility,
