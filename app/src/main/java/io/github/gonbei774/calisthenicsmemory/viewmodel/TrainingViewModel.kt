@@ -2624,6 +2624,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                 val existing = programDao.getProgramByName(shareProgram.name)
                 if (existing != null) {
                     programsSkipped++
+                    importedProgramIds.add(existing.id)
                     continue
                 }
 
@@ -2670,6 +2671,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                 val existing = intervalProgramDao.getProgramByName(shareInterval.name)
                 if (existing != null) {
                     intervalProgramsSkipped++
+                    importedIntervalProgramIds.add(existing.id)
                     continue
                 }
 
