@@ -31,7 +31,9 @@ import io.github.gonbei774.calisthenicsmemory.ui.theme.Slate600
 import io.github.gonbei774.calisthenicsmemory.viewmodel.AiViewModel
 import io.github.gonbei774.calisthenicsmemory.viewmodel.TrainingViewModel
 import androidx.compose.material.icons.filled.Face
+import dev.jeziellago.compose.markdowntext.MarkdownText
 import kotlinx.coroutines.launch
+import androidx.compose.ui.text.TextStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -461,12 +463,23 @@ fun ChatBubble(
                 ),
                 tonalElevation = 1.dp
             ) {
-                Text(
-                    text = displayText,
-                    color = textColor,
-                    modifier = Modifier.padding(12.dp),
-                    fontSize = 16.sp
-                )
+                if (message.isUser) {
+                    Text(
+                        text = displayText,
+                        color = textColor,
+                        modifier = Modifier.padding(12.dp),
+                        fontSize = 16.sp
+                    )
+                } else {
+                    MarkdownText(
+                        markdown = displayText,
+                        modifier = Modifier.padding(12.dp),
+                        style = TextStyle(
+                            color = textColor,
+                            fontSize = 16.sp
+                        )
+                    )
+                }
             }
 
             if (workoutJson != null) {
