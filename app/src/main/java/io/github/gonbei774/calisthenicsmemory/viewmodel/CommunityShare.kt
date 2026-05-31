@@ -273,3 +273,38 @@ fun validateCommunityShareContent(data: CommunityShareData): List<String> {
 
     return errors
 }
+
+fun extractWorkoutJson(text: String): String? {
+    val startIndex = text.indexOf("{\n  \"formatVersion\":")
+    if (startIndex == -1) {
+        // Try a more flexible search
+        val flexibleStart = text.indexOf("{\"formatVersion\":")
+        if (flexibleStart == -1) return null
+
+        var braceCount = 0
+        var endIndex = -1
+        for (i in flexibleStart until text.length) {
+            if (text[i] == '{') braceCount++
+            else if (text[i] == '}') braceCount--
+
+            if (braceCount == 0) {
+                endIndex = i + 1
+                break
+            }
+        }
+        return if (endIndex != -1) text.substring(flexibleStart, endIndex) else null
+    }
+
+    var braceCount = 0
+    var endIndex = -1
+    for (i in startIndex until text.length) {
+        if (text[i] == '{') braceCount++
+        else if (text[i] == '}') braceCount--
+
+        if (braceCount == 0) {
+            endIndex = i + 1
+            break
+        }
+    }
+    return if (endIndex != -1) text.substring(startIndex, endIndex) else null
+}
