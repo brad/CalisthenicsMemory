@@ -129,6 +129,7 @@ dependencies {
     implementation("sh.calvin.reorderable:reorderable:3.0.0")
     // Generative AI
     implementation(libs.generativeai)
+    implementation(libs.compose.markdown)
 
     // Testing
     testImplementation("junit:junit:4.13.2")
