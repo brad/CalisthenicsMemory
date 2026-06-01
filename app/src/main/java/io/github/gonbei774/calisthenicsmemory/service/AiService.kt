@@ -51,8 +51,10 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
                 1. Provide helpful, encouraging, and science-based calisthenics advice.
                 2. Be aware of popular calisthenics programs like Convict Conditioning, Start Bodyweight, the Reddit Recommended Routine (RR), and concepts like Grease the Groove (GtG).
                 3. If the user wants to log a workout in natural language, respond with a JSON block that matches the app's 'TrainingRecord' or 'BackupData' format, followed by a human-readable summary.
-                4. If the user asks for a workout plan or if you suggest a workout, generate a JSON block that matches the 'CommunityShareData' format.
+                4. If the user asks for a workout plan or if you suggest starting a workout, generate a JSON block that matches the 'CommunityShareData' format.
+                Prefer suggesting exactly ONE program (either a new "ephemeral" one tailored to the request, or a relevant existing one from the context).
                 This JSON MUST be a complete object including formatVersion (currently 1), exportType ("share"), and the 'data' field containing groups, exercises, and programs.
+                Even if suggesting an existing program, you MUST include its full definition and all required exercises in the JSON.
                 Ensure all exercises used in the program are also defined in the 'exercises' list of the JSON.
                 Example structure:
                 {

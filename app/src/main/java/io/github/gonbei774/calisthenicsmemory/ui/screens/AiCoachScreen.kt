@@ -25,6 +25,7 @@ import io.github.gonbei774.calisthenicsmemory.R
 import io.github.gonbei774.calisthenicsmemory.data.AiMessage
 import io.github.gonbei774.calisthenicsmemory.viewmodel.CommunityShareData
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 import io.github.gonbei774.calisthenicsmemory.ui.theme.LocalAppColors
 import io.github.gonbei774.calisthenicsmemory.ui.theme.Purple600
 import io.github.gonbei774.calisthenicsmemory.ui.theme.Slate600
@@ -298,6 +299,40 @@ fun AiCoachScreen(
                                                 color = appColors.textSecondary
                                             )
                                         }
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                            horizontalArrangement = Arrangement.End
+                                        ) {
+                                            TextButton(onClick = {
+                                                scope.launch {
+                                                    val singleProgramJson = json.encodeToString(shareData.copy(data = shareData.data.copy(programs = listOf(program), intervalPrograms = emptyList())))
+                                                    val report = trainingViewModel.importCommunityShare(singleProgramJson)
+                                                    suggestedWorkoutJson = null
+                                                    if (report.importedProgramIds.isNotEmpty()) {
+                                                        onNavigateToProgramEdit(report.importedProgramIds.first())
+                                                    }
+                                                }
+                                            }) {
+                                                Text(stringResource(R.string.ai_coach_edit_workout))
+                                            }
+                                            Spacer(Modifier.width(8.dp))
+                                            Button(
+                                                onClick = {
+                                                    scope.launch {
+                                                        val singleProgramJson = json.encodeToString(shareData.copy(data = shareData.data.copy(programs = listOf(program), intervalPrograms = emptyList())))
+                                                        val report = trainingViewModel.importCommunityShare(singleProgramJson)
+                                                        suggestedWorkoutJson = null
+                                                        if (report.importedProgramIds.isNotEmpty()) {
+                                                            onNavigateToProgramExecution(report.importedProgramIds.first())
+                                                        }
+                                                    }
+                                                },
+                                                colors = ButtonDefaults.buttonColors(containerColor = Purple600)
+                                            ) {
+                                                Text(stringResource(R.string.ai_coach_start_workout))
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -314,6 +349,40 @@ fun AiCoachScreen(
                                             fontSize = 14.sp,
                                             color = appColors.textSecondary
                                         )
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                            horizontalArrangement = Arrangement.End
+                                        ) {
+                                            TextButton(onClick = {
+                                                scope.launch {
+                                                    val singleProgramJson = json.encodeToString(shareData.copy(data = shareData.data.copy(programs = emptyList(), intervalPrograms = listOf(program))))
+                                                    val report = trainingViewModel.importCommunityShare(singleProgramJson)
+                                                    suggestedWorkoutJson = null
+                                                    if (report.importedIntervalProgramIds.isNotEmpty()) {
+                                                        onNavigateToIntervalEdit(report.importedIntervalProgramIds.first())
+                                                    }
+                                                }
+                                            }) {
+                                                Text(stringResource(R.string.ai_coach_edit_workout))
+                                            }
+                                            Spacer(Modifier.width(8.dp))
+                                            Button(
+                                                onClick = {
+                                                    scope.launch {
+                                                        val singleProgramJson = json.encodeToString(shareData.copy(data = shareData.data.copy(programs = emptyList(), intervalPrograms = listOf(program))))
+                                                        val report = trainingViewModel.importCommunityShare(singleProgramJson)
+                                                        suggestedWorkoutJson = null
+                                                        if (report.importedIntervalProgramIds.isNotEmpty()) {
+                                                            onNavigateToIntervalExecution(report.importedIntervalProgramIds.first())
+                                                        }
+                                                    }
+                                                },
+                                                colors = ButtonDefaults.buttonColors(containerColor = Purple600)
+                                            ) {
+                                                Text(stringResource(R.string.ai_coach_start_workout))
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -321,33 +390,8 @@ fun AiCoachScreen(
                     }
                 },
                 confirmButton = {
-                    TextButton(onClick = {
-                        scope.launch {
-                            val report = trainingViewModel.importCommunityShare(suggestedWorkoutJson!!)
-                            suggestedWorkoutJson = null
-                            if (report.importedProgramIds.isNotEmpty()) {
-                                onNavigateToProgramExecution(report.importedProgramIds.first())
-                            } else if (report.importedIntervalProgramIds.isNotEmpty()) {
-                                onNavigateToIntervalExecution(report.importedIntervalProgramIds.first())
-                            }
-                        }
-                    }) {
-                        Text(stringResource(R.string.ai_coach_start_workout))
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = {
-                        scope.launch {
-                            val report = trainingViewModel.importCommunityShare(suggestedWorkoutJson!!)
-                            suggestedWorkoutJson = null
-                            if (report.importedProgramIds.isNotEmpty()) {
-                                onNavigateToProgramEdit(report.importedProgramIds.first())
-                            } else if (report.importedIntervalProgramIds.isNotEmpty()) {
-                                onNavigateToIntervalEdit(report.importedIntervalProgramIds.first())
-                            }
-                        }
-                    }) {
-                        Text(stringResource(R.string.ai_coach_edit_workout))
+                    TextButton(onClick = { suggestedWorkoutJson = null }) {
+                        Text(stringResource(R.string.cancel))
                     }
                 }
             )
