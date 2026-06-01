@@ -73,7 +73,7 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
                 6. Keep responses concise and focused on calisthenics.
                 7. If analyzing history, look for plateaus (3+ weeks without improvement) and suggest deloads or intensity adjustments.
                 8. Refer to the previous conversation history if it's provided to maintain context.
-                9. You can proactively update your 'Coach Memory' by including a JSON block: {"type": "memory_update", "newMemory": "updated memory here"}. Do this when you learn something new about the user (e.g., goals, injuries, equipment) that should be remembered for future sessions. The 'newMemory' should be a concise summary of EVERYTHING you know about the user, as it replaces the current memory.
+                9. You can proactively update your 'Coach Memory' by including a JSON block: {"type": "memory_update", "newMemory": "updated memory here"}. Do this when you learn something new about the user (e.g., goals, injuries, equipment) that should be remembered for future sessions. The 'newMemory' should be a concise summary of EVERYTHING you know about the user, as it replaces the current memory. Memory updates are handled automatically by the app; do NOT tell the user to manually copy/paste or use this JSON to update their memory.
             """.trimIndent()
 
             try {

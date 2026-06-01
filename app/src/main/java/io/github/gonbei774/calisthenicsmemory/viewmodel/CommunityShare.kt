@@ -281,25 +281,9 @@ fun validateCommunityShareContent(data: CommunityShareData): List<String> {
 }
 
 fun extractWorkoutJson(text: String): String? {
-    val startIndex = text.indexOf("{\n  \"formatVersion\":")
-    if (startIndex == -1) {
-        // Try a more flexible search
-        val flexibleStart = text.indexOf("{\"formatVersion\":")
-        if (flexibleStart == -1) return null
-
-        var braceCount = 0
-        var endIndex = -1
-        for (i in flexibleStart until text.length) {
-            if (text[i] == '{') braceCount++
-            else if (text[i] == '}') braceCount--
-
-            if (braceCount == 0) {
-                endIndex = i + 1
-                break
-            }
-        }
-        return if (endIndex != -1) text.substring(flexibleStart, endIndex) else null
-    }
+    val regex = Regex("""\{[\s\n]*"formatVersion"[\s\n]*:""")
+    val match = regex.find(text) ?: return null
+    val startIndex = match.range.first
 
     var braceCount = 0
     var endIndex = -1
@@ -316,25 +300,9 @@ fun extractWorkoutJson(text: String): String? {
 }
 
 fun extractMemoryUpdate(text: String): String? {
-    val startIndex = text.indexOf("{\"type\": \"memory_update\"")
-    if (startIndex == -1) {
-        // Try a more flexible search
-        val flexibleStart = text.indexOf("{\"type\":\"memory_update\"")
-        if (flexibleStart == -1) return null
-
-        var braceCount = 0
-        var endIndex = -1
-        for (i in flexibleStart until text.length) {
-            if (text[i] == '{') braceCount++
-            else if (text[i] == '}') braceCount--
-
-            if (braceCount == 0) {
-                endIndex = i + 1
-                break
-            }
-        }
-        return if (endIndex != -1) text.substring(flexibleStart, endIndex) else null
-    }
+    val regex = Regex("""\{[\s\n]*"type"[\s\n]*:[\s\n]*"memory_update"""")
+    val match = regex.find(text) ?: return null
+    val startIndex = match.range.first
 
     var braceCount = 0
     var endIndex = -1
