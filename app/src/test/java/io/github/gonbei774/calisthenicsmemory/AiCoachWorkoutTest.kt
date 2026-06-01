@@ -129,4 +129,44 @@ class AiCoachWorkoutTest {
         val extracted = extractMemoryUpdate(aiResponse)
         assertEquals("{\"type\":\"memory_update\",\"newMemory\":\"Goals: 10 pullups\"}", extracted)
     }
+
+    @Test
+    fun `extractMemoryUpdate extracts from markdown code block`() {
+        val aiResponse = """
+            I've updated my memory.
+            ```json
+            {
+              "type": "memory_update",
+              "newMemory": "User prefers high volume."
+            }
+            ```
+        """.trimIndent()
+        val extracted = extractMemoryUpdate(aiResponse)
+        assertNotNull("Should extract JSON even if inside markdown block", extracted)
+        assertTrue(extracted!!.contains("User prefers high volume."))
+    }
+
+    @Test
+    fun `extractMemoryUpdate handles extra whitespace`() {
+        val aiResponse = "Update: { \"type\" : \"memory_update\" , \"newMemory\" : \"test\" }"
+        val extracted = extractMemoryUpdate(aiResponse)
+        assertNotNull("Should handle extra whitespace", extracted)
+    }
+
+    @Test
+    fun `extractWorkoutJson extracts from markdown code block`() {
+        val aiResponse = """
+            Here's your workout:
+            ```json
+            {
+              "formatVersion": 1,
+              "exportType": "share",
+              "data": { "programs": [] }
+            }
+            ```
+        """.trimIndent()
+        val extracted = extractWorkoutJson(aiResponse)
+        assertNotNull("Should extract JSON even if inside markdown block", extracted)
+        assertTrue(extracted!!.contains("\"formatVersion\": 1"))
+    }
 }
