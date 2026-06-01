@@ -29,6 +29,7 @@ import io.github.gonbei774.calisthenicsmemory.ui.theme.LocalAppColors
 import io.github.gonbei774.calisthenicsmemory.ui.theme.Purple600
 import io.github.gonbei774.calisthenicsmemory.ui.theme.Slate600
 import io.github.gonbei774.calisthenicsmemory.viewmodel.extractWorkoutJson
+import io.github.gonbei774.calisthenicsmemory.viewmodel.extractMemoryUpdate
 import io.github.gonbei774.calisthenicsmemory.viewmodel.AiViewModel
 import io.github.gonbei774.calisthenicsmemory.viewmodel.TrainingViewModel
 import androidx.compose.material.icons.filled.Face
@@ -410,7 +411,11 @@ fun ChatBubble(
     val textColor = if (message.isUser) Color.White else appColors.textPrimary
 
     val workoutJson = if (!message.isUser) extractWorkoutJson(message.text) else null
-    val displayText = if (workoutJson != null) message.text.replace(workoutJson, "").trim() else message.text
+    val memoryJson = if (!message.isUser) extractMemoryUpdate(message.text) else null
+    var displayText = message.text
+    if (workoutJson != null) displayText = displayText.replace(workoutJson, "")
+    if (memoryJson != null) displayText = displayText.replace(memoryJson, "")
+    displayText = displayText.trim()
 
     Box(
         modifier = Modifier.fillMaxWidth(),

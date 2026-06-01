@@ -8,6 +8,7 @@ import io.github.gonbei774.calisthenicsmemory.data.AiThread
 import io.github.gonbei774.calisthenicsmemory.data.AppDatabase
 import io.github.gonbei774.calisthenicsmemory.data.WorkoutPreferences
 import io.github.gonbei774.calisthenicsmemory.service.AiService
+import kotlinx.serialization.json.Json
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -53,12 +54,24 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
             val history = aiDao.getMessagesForThreadSync(threadId)
             val response = aiService.generateResponse(text, contextData, history)
 
+            val aiMessageText = response ?: "Sorry, I couldn't process that."
             val aiMessage = AiMessage(
                 threadId = threadId,
-                text = response ?: "Sorry, I couldn't process that.",
+                text = aiMessageText,
                 isUser = false
             )
             aiDao.insertMessage(aiMessage)
+
+            // Extract memory update
+            extractMemoryUpdate(aiMessageText)?.let { memoryJson ->
+                try {
+                    val update = Json { ignoreUnknownKeys = true }.decodeFromString<MemoryUpdate>(memoryJson)
+                    workoutPreferences.setAiMemory(update.newMemory)
+                } catch (e: Exception) {
+                    // Silently fail for memory updates
+                }
+            }
+
             _isLoading.value = false
         }
     }
