@@ -74,7 +74,10 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
                 7. If analyzing history, look for plateaus (3+ weeks without improvement) and suggest deloads or intensity adjustments.
                 8. Refer to the previous conversation history if it's provided to maintain context.
                 9. You can proactively update your 'Coach Memory' by including a JSON block: {"type": "memory_update", "newMemory": "updated memory here"}. Do this when you learn something new about the user (e.g., goals, injuries, equipment) that should be remembered for future sessions. The 'newMemory' should be a concise summary of EVERYTHING you know about the user, as it replaces the current memory. Memory updates are handled automatically by the app; do NOT tell the user to manually copy/paste or use this JSON to update their memory.
-            """.trimIndent()
+                10. If the user asks to modify, delete, or reorganize existing data (like removing an exercise, changing a program, or updating the Todo list), you MUST perform these changes on the provided "Current Context" JSON and return the ENTIRE updated context in a JSON block: {"type": "auto_update", "updatedContext": <Updated BackupData JSON>}.
+                This allows you to "automatically" manage the users database. Only use this for destructive or structural changes that the user explicitly requested.
+                The "updatedContext" MUST follow the "BackupData" format provided in the Current Context.
+                Always follow the "auto_update" JSON with a brief human-readable confirmation of what you changed.            """.trimIndent()
 
             try {
                 val response = model.generateContent(fullPrompt)

@@ -1,6 +1,8 @@
 package io.github.gonbei774.calisthenicsmemory.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.filled.Refresh
+import io.github.gonbei774.calisthenicsmemory.viewmodel.extractAutoUpdate
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -205,7 +207,7 @@ fun AiCoachScreen(
                     contentPadding = PaddingValues(vertical = 16.dp)
                 ) {
                     items(chatMessages) { message ->
-                        ChatBubble(message) { json -> suggestedWorkoutJson = json }
+                        ChatBubble(message, viewModel, trainingViewModel) { json -> suggestedWorkoutJson = json }
                     }
                     if (isLoading) {
                         item {
@@ -447,6 +449,8 @@ fun AiCoachScreen(
 @Composable
 fun ChatBubble(
     message: AiMessage,
+    viewModel: AiViewModel,
+    trainingViewModel: TrainingViewModel,
     onReviewSuggestion: (String) -> Unit = {}
 ) {
     val appColors = LocalAppColors.current
@@ -456,9 +460,11 @@ fun ChatBubble(
 
     val workoutJson = if (!message.isUser) extractWorkoutJson(message.text) else null
     val memoryJson = if (!message.isUser) extractMemoryUpdate(message.text) else null
+    val autoUpdateJson = if (!message.isUser) extractAutoUpdate(message.text) else null
     var displayText = message.text
-    if (workoutJson != null) displayText = displayText.replace(workoutJson, "")
-    if (memoryJson != null) displayText = displayText.replace(memoryJson, "")
+    if (workoutJson != null) displayText = displayText.replace(workoutJson!!, "")
+    if (memoryJson != null) displayText = displayText.replace(memoryJson!!, "")
+    if (autoUpdateJson != null) displayText = displayText.replace(autoUpdateJson!!, "")
     displayText = displayText.trim()
 
     Box(
@@ -507,6 +513,17 @@ fun ChatBubble(
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.ai_coach_review_suggestion))
+                }
+            }
+
+            if (message.backupDataJson != null) {
+                TextButton(
+                    onClick = { viewModel.undoAutoUpdate(message, trainingViewModel) },
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp), tint = Purple600)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.ai_coach_undo_changes), color = Purple600)
                 }
             }
         }

@@ -22,7 +22,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AiThread::class,
         AiMessage::class
     ],
-    version = 23,
+    version = 24,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -54,7 +54,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17,
                         MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21,
                         MIGRATION_21_22
-                        , MIGRATION_22_23
+                        , MIGRATION_22_23, MIGRATION_23_24
                     )
                     .fallbackToDestructiveMigration()
                     .build()
@@ -185,6 +185,13 @@ abstract class AppDatabase : RoomDatabase() {
                 database.execSQL("CREATE TABLE IF NOT EXISTS ai_threads (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, title TEXT NOT NULL, createdAt INTEGER NOT NULL)")
                 database.execSQL("CREATE TABLE IF NOT EXISTS ai_messages (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, threadId INTEGER NOT NULL, text TEXT NOT NULL, isUser INTEGER NOT NULL, timestamp INTEGER NOT NULL, FOREIGN KEY (threadId) REFERENCES ai_threads(id) ON DELETE CASCADE)")
                 database.execSQL("CREATE INDEX IF NOT EXISTS index_ai_messages_threadId ON ai_messages(threadId)")
+            }
+        }
+
+        // Migration 23 -> 24: add backupDataJson to ai_messages for Undo support
+        val MIGRATION_23_24 = object : Migration(23, 24) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE ai_messages ADD COLUMN backupDataJson TEXT")
             }
         }
     }
