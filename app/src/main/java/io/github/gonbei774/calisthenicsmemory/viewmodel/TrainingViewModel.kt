@@ -1,6 +1,7 @@
 package io.github.gonbei774.calisthenicsmemory.viewmodel
 
 import android.app.Application
+import androidx.room.withTransaction
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.gonbei774.calisthenicsmemory.data.AppDatabase
@@ -2742,7 +2743,52 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     /**
      * Get all data as JSON for AI context
      */
-    suspend fun getAllDataAsJson(): String {
+
+    suspend fun getAllDataAsBackupDataSync(): BackupData = withContext(Dispatchers.IO) {
+        val groupsList = groupDao.getAllGroupsSync()
+        val exercisesList = exerciseDao.getAllExercisesSync()
+        val recordsList = recordDao.getAllRecordsSync()
+        val programsList = programDao.getAllProgramsSync()
+        val programExercisesList = programExerciseDao.getAllProgramExercisesSync()
+        val programLoopsList = programLoopDao.getAllProgramLoopsSync()
+        val intervalProgramsList = intervalProgramDao.getAllIntervalProgramsSync()
+        val intervalExercisesList = intervalProgramExerciseDao.getAllIntervalProgramExercisesSync()
+        val intervalRecordsList = intervalRecordDao.getAllIntervalRecordsSync()
+        val todoTasksList = todoTaskDao.getAllTodoTasksSync()
+
+        BackupData(
+            version = 22,
+            exportDate = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+            app = "Calisthenics Memory",
+            groups = groupsList.map { ExportGroup(it.id, it.name, it.displayOrder) },
+            exercises = exercisesList.map {
+                ExportExercise(it.id, it.name, it.type, it.group, it.sortOrder, it.displayOrder,
+                    it.laterality, it.targetSets, it.targetValue, it.isFavorite, it.restInterval,
+                    it.repDuration, it.distanceTrackingEnabled, it.weightTrackingEnabled,
+                    it.assistanceTrackingEnabled, it.description)
+            },
+            records = recordsList.map {
+                ExportRecord(it.id, it.exerciseId, it.valueRight, it.valueLeft, it.setNumber,
+                    it.date, it.time, it.comment, it.distanceCm, it.weightG, it.assistanceG, it.rpe)
+            },
+            programs = programsList.map { ExportProgram(it.id, it.name) },
+            programExercises = programExercisesList.map {
+                ExportProgramExercise(it.id, it.programId, it.exerciseId, it.sortOrder, it.sets,
+                    it.targetValue, it.intervalSeconds, it.loopId)
+            },
+            programLoops = programLoopsList.map { ExportProgramLoop(it.id, it.programId, it.sortOrder, it.rounds, it.restBetweenRounds) },
+            intervalPrograms = intervalProgramsList.map {
+                ExportIntervalProgram(it.id, it.name, it.workSeconds, it.restSeconds, it.rounds, it.roundRestSeconds)
+            },
+            intervalProgramExercises = intervalExercisesList.map { ExportIntervalProgramExercise(it.id, it.programId, it.exerciseId, it.sortOrder) },
+            intervalRecords = intervalRecordsList.map {
+                ExportIntervalRecord(it.id, it.programName, it.date, it.time, it.workSeconds, it.restSeconds, it.rounds, it.roundRestSeconds, it.completedRounds, it.completedExercisesInLastRound, it.exercisesJson, it.comment)
+            },
+            todoTasks = todoTasksList.map { ExportTodoTask(it.id, it.type, it.referenceId, it.sortOrder, it.repeatDays, it.lastCompletedDate) }
+        )
+    }
+
+suspend fun getAllDataAsJson(): String {
         return withContext(Dispatchers.IO) {
             val groupsList = groupDao.getAllGroupsSync()
             val exercisesList = exerciseDao.getAllExercisesSync()
@@ -2789,4 +2835,149 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
             Json.encodeToString(backupData)
         }
     }
+
+    suspend fun applyAutoUpdate(backupData: BackupData) = withContext(Dispatchers.IO) {
+        database.withTransaction {
+            // 1. Delete all existing workout-related data
+            groupDao.deleteAll()
+            exerciseDao.deleteAll()
+            recordDao.deleteAll()
+            programDao.deleteAll()
+            intervalProgramDao.deleteAll()
+            intervalRecordDao.deleteAll()
+            todoTaskDao.deleteAll()
+
+            // 2. Import groups
+            backupData.groups.forEach { exportGroup ->
+                groupDao.insertGroup(ExerciseGroup(
+                    id = exportGroup.id,
+                    name = exportGroup.name,
+                    displayOrder = exportGroup.displayOrder
+                ))
+            }
+
+            // 3. Import exercises
+            backupData.exercises.forEach { exportExercise ->
+                exerciseDao.insertExercise(Exercise(
+                    id = exportExercise.id,
+                    name = exportExercise.name,
+                    type = exportExercise.type,
+                    group = exportExercise.group,
+                    sortOrder = exportExercise.sortOrder,
+                    displayOrder = exportExercise.displayOrder,
+                    laterality = exportExercise.laterality,
+                    targetSets = exportExercise.targetSets,
+                    targetValue = exportExercise.targetValue,
+                    isFavorite = exportExercise.isFavorite,
+                    restInterval = exportExercise.restInterval,
+                    repDuration = exportExercise.repDuration,
+                    distanceTrackingEnabled = exportExercise.distanceTrackingEnabled,
+                    weightTrackingEnabled = exportExercise.weightTrackingEnabled,
+                    assistanceTrackingEnabled = exportExercise.assistanceTrackingEnabled,
+                    description = exportExercise.description
+                ))
+            }
+
+            // 4. Import records
+            backupData.records.forEach { exportRecord ->
+                recordDao.insertRecord(TrainingRecord(
+                    id = exportRecord.id,
+                    exerciseId = exportRecord.exerciseId,
+                    valueRight = exportRecord.valueRight,
+                    valueLeft = exportRecord.valueLeft,
+                    setNumber = exportRecord.setNumber,
+                    date = exportRecord.date,
+                    time = exportRecord.time,
+                    comment = exportRecord.comment,
+                    distanceCm = exportRecord.distanceCm,
+                    weightG = exportRecord.weightG,
+                    assistanceG = exportRecord.assistanceG,
+                    rpe = exportRecord.rpe
+                ))
+            }
+
+            // 5. Import programs
+            backupData.programs.forEach { exportProgram ->
+                programDao.insert(Program(id = exportProgram.id, name = exportProgram.name))
+            }
+
+            // 6. Import program loops
+            backupData.programLoops.forEach { exportLoop ->
+                programLoopDao.insert(ProgramLoop(
+                    id = exportLoop.id,
+                    programId = exportLoop.programId,
+                    sortOrder = exportLoop.sortOrder,
+                    rounds = exportLoop.rounds,
+                    restBetweenRounds = exportLoop.restBetweenRounds
+                ))
+            }
+
+            // 7. Import program exercises
+            backupData.programExercises.forEach { exportPe ->
+                programExerciseDao.insert(ProgramExercise(
+                    id = exportPe.id,
+                    programId = exportPe.programId,
+                    exerciseId = exportPe.exerciseId,
+                    sortOrder = exportPe.sortOrder,
+                    sets = exportPe.sets,
+                    targetValue = exportPe.targetValue,
+                    intervalSeconds = exportPe.intervalSeconds,
+                    loopId = exportPe.loopId
+                ))
+            }
+
+            // 8. Import interval programs
+            backupData.intervalPrograms.forEach { exportIp ->
+                intervalProgramDao.insert(IntervalProgram(
+                    id = exportIp.id,
+                    name = exportIp.name,
+                    workSeconds = exportIp.workSeconds,
+                    restSeconds = exportIp.restSeconds,
+                    rounds = exportIp.rounds,
+                    roundRestSeconds = exportIp.roundRestSeconds
+                ))
+            }
+
+            // 9. Import interval exercises
+            backupData.intervalProgramExercises.forEach { exportIpe ->
+                intervalProgramExerciseDao.insert(IntervalProgramExercise(
+                    id = exportIpe.id,
+                    programId = exportIpe.programId,
+                    exerciseId = exportIpe.exerciseId,
+                    sortOrder = exportIpe.sortOrder
+                ))
+            }
+
+            // 10. Import interval records
+            backupData.intervalRecords.forEach { exportIr ->
+                intervalRecordDao.insert(IntervalRecord(
+                    id = exportIr.id,
+                    programName = exportIr.programName,
+                    date = exportIr.date,
+                    time = exportIr.time,
+                    workSeconds = exportIr.workSeconds,
+                    restSeconds = exportIr.restSeconds,
+                    rounds = exportIr.rounds,
+                    roundRestSeconds = exportIr.roundRestSeconds,
+                    completedRounds = exportIr.completedRounds,
+                    completedExercisesInLastRound = exportIr.completedExercisesInLastRound,
+                    exercisesJson = exportIr.exercisesJson,
+                    comment = exportIr.comment
+                ))
+            }
+
+            // 11. Import todo tasks
+            backupData.todoTasks.forEach { exportTodo ->
+                todoTaskDao.insert(TodoTask(
+                    id = exportTodo.id,
+                    type = exportTodo.type,
+                    referenceId = exportTodo.referenceId,
+                    sortOrder = exportTodo.sortOrder,
+                    repeatDays = exportTodo.repeatDays,
+                    lastCompletedDate = exportTodo.lastCompletedDate
+                ))
+            }
+        }
+    }
+
 }

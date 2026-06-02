@@ -781,4 +781,6 @@
     <string name="ai_coach_edit_workout">Edit Workout</string>
     <string name="ai_coach_import_success">Program imported successfully!</string>
     <string name="ai_coach_no_workout_found">No workout data found in message.</string>
+    <string name="ai_coach_undo_changes">Undo Changes</string>
+    <string name="ai_coach_auto_updated_undone">[System: Auto-update undone]</string>
 </resources>

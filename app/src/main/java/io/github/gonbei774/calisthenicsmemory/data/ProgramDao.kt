@@ -28,4 +28,7 @@ interface ProgramDao {
 
     @Query("SELECT * FROM programs WHERE name = :name LIMIT 1")
     suspend fun getProgramByName(name: String): Program?
+
+    @Query("DELETE FROM programs")
+    suspend fun deleteAll()
 }

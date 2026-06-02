@@ -23,5 +23,6 @@ data class AiMessage(
     val threadId: Long,
     val text: String,
     val isUser: Boolean,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val backupDataJson: String? = null
 )

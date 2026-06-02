@@ -47,4 +47,7 @@ interface TodoTaskDao {
 
     @Query("SELECT * FROM todo_tasks WHERE type = :type AND referenceId = :referenceId LIMIT 1")
     suspend fun getTaskByReference(type: String, referenceId: Long): TodoTask?
+
+    @Query("DELETE FROM todo_tasks")
+    suspend fun deleteAll()
 }
