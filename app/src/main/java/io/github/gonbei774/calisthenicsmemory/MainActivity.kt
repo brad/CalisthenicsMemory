@@ -20,6 +20,7 @@ import java.util.Locale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -82,6 +83,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         systemDarkMode.value =
             (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
@@ -234,6 +236,7 @@ fun CalisthenicsMemoryApp(
     }
 
     Scaffold(
+        modifier = Modifier.fillMaxSize().systemBarsPadding(),
         snackbarHost = {
             SnackbarHost(
                 hostState = snackbarHostState,

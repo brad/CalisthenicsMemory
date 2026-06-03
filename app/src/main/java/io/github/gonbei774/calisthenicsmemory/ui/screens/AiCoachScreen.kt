@@ -147,6 +147,7 @@ fun AiCoachScreen(
         }
     ) {
         Scaffold(
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
                 Surface(
                     modifier = Modifier
@@ -223,7 +224,7 @@ fun AiCoachScreen(
 
                 Surface(
                     tonalElevation = 2.dp,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().imePadding(),
                     color = appColors.cardBackground
                 ) {
                     Row(
