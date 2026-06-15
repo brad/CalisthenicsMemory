@@ -31,14 +31,14 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    // Keystore設定を読み込み
+    // Load keystore settings
     val keystorePropertiesFile = rootProject.file("keystore.properties")
     val keystoreProperties = Properties()
     if (keystorePropertiesFile.exists()) {
         keystoreProperties.load(FileInputStream(keystorePropertiesFile))
     }
 
-    // 署名設定
+    // Signing configuration
     signingConfigs {
         create("release") {
             if (keystorePropertiesFile.exists()) {
@@ -47,6 +47,12 @@ android {
                 keyAlias = keystoreProperties["keyAlias"].toString()
                 keyPassword = keystoreProperties["keyPassword"].toString()
             }
+        }
+        create("debugConfig") {
+            storeFile = file(System.getenv("RUNNER_TEMP") + "/debug-keystore.jks")
+            storePassword = System.getenv("KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("KEY_ALIAS")
+            keyPassword = System.getenv("KEY_PASSWORD")
         }
     }
 
@@ -57,13 +63,16 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // リリースビルド時に署名を適用
+            // Apply signing during release build
             signingConfig = signingConfigs.getByName("release")
-            // 依存関係メタデータを無効化（F-Droid要件）
+            // Disable dependency metadata (F-Droid requirement)
             dependenciesInfo {
                 includeInApk = false
                 includeInBundle = false
             }
+        }
+        debug {
+            signingConfig = signingConfigs.getByName("debugConfig")
         }
     }
 
@@ -118,6 +127,9 @@ dependencies {
 
     // Reorderable (drag and drop)
     implementation("sh.calvin.reorderable:reorderable:3.0.0")
+    // Generative AI
+    implementation(libs.generativeai)
+    implementation(libs.compose.markdown)
 
     // Testing
     testImplementation("junit:junit:4.13.2")

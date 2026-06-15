@@ -1,0 +1,6 @@
+    <string name="ai_coach_review_suggestion">Review Suggestion</string>
+    <string name="ai_coach_suggested_workout">Suggested Workout</string>
+    <string name="ai_coach_start_workout">Start Workout</string>
+    <string name="ai_coach_edit_workout">Edit Workout</string>
+    <string name="ai_coach_import_success">Program imported successfully!</string>
+    <string name="ai_coach_no_workout_found">No workout data found in message.</string>

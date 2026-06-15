@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import io.github.gonbei774.calisthenicsmemory.BuildConfig
+import io.github.gonbei774.calisthenicsmemory.data.WorkoutPreferences
 import io.github.gonbei774.calisthenicsmemory.R
 import io.github.gonbei774.calisthenicsmemory.data.AppLanguage
 import io.github.gonbei774.calisthenicsmemory.data.AppTheme
@@ -88,10 +89,200 @@ fun SettingsScreenNew(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // ========================================
-            // セクション: 言語設定
+            // Section: AI Settings
+            // ========================================
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.ai_coach_settings_title),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = appColors.textPrimary,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.ai_context_description),
+                        fontSize = 14.sp,
+                        color = appColors.textSecondary,
+                        lineHeight = 20.sp
+                    )
+                }
+            }
+
+            item {
+                val workoutPrefs = remember { WorkoutPreferences(context) }
+                var apiKey by remember { mutableStateOf(workoutPrefs.getGeminiApiKey()) }
+                var selectedModel by remember { mutableStateOf(workoutPrefs.getGeminiModel()) }
+                var aiMemory by remember { mutableStateOf(workoutPrefs.getAiMemory()) }
+                var showModelDialog by remember { mutableStateOf(false) }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = appColors.cardBackground
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = apiKey,
+                            onValueChange = {
+                                apiKey = it
+                                workoutPrefs.setGeminiApiKey(it)
+                            },
+                            label = { Text(stringResource(R.string.gemini_api_key)) },
+                            placeholder = { Text(stringResource(R.string.gemini_api_key_hint)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = appColors.textPrimary,
+                                unfocusedTextColor = appColors.textPrimary,
+                                focusedBorderColor = Purple600,
+                                unfocusedBorderColor = appColors.textSecondary
+                            )
+                        )
+
+                        // Model selection card
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = appColors.cardBackgroundSecondary
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            onClick = { showModelDialog = true }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Gemini Model",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = appColors.textPrimary
+                                    )
+                                    Text(
+                                        text = selectedModel,
+                                        fontSize = 12.sp,
+                                        color = appColors.textSecondary
+                                    )
+                                }
+                                Text(
+                                    text = "▼",
+                                    fontSize = 12.sp,
+                                    color = appColors.textSecondary
+                                )
+                            }
+                        }
+
+                        if (showModelDialog) {
+                            val models = listOf(
+                                "gemini-2.5-flash",
+                                "gemini-2.0-flash",
+                                "gemini-2.0-flash-lite-preview",
+                                "gemini-1.5-flash",
+                                "gemini-1.5-pro",
+                                "gemini-1.0-pro"
+                            )
+                            AlertDialog(
+                                onDismissRequest = { showModelDialog = false },
+                                title = { Text("Select Gemini Model") },
+                                text = {
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        models.forEach { model ->
+                                            Card(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = if (selectedModel == model) {
+                                                        Purple600.copy(alpha = 0.3f)
+                                                    } else {
+                                                        appColors.cardBackgroundSecondary
+                                                    }
+                                                ),
+                                                onClick = {
+                                                    selectedModel = model
+                                                    workoutPrefs.setGeminiModel(model)
+                                                    showModelDialog = false
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = model,
+                                                    modifier = Modifier.padding(16.dp),
+                                                    color = appColors.textPrimary
+                                                )
+                                            }
+                                        }
+                                    }
+                                },
+                                confirmButton = {
+                                    TextButton(onClick = { showModelDialog = false }) {
+                                        Text(stringResource(R.string.close))
+                                    }
+                                }
+                            )
+                        }
+
+                        OutlinedTextField(
+                            value = aiMemory,
+                            onValueChange = {
+                                aiMemory = it
+                                workoutPrefs.setAiMemory(it)
+                            },
+                            label = { Text(stringResource(R.string.ai_coach_memory)) },
+                            placeholder = { Text(stringResource(R.string.ai_coach_memory_hint)) },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
+                            maxLines = 5,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = appColors.textPrimary,
+                                unfocusedTextColor = appColors.textPrimary,
+                                focusedBorderColor = Purple600,
+                                unfocusedBorderColor = appColors.textSecondary
+                            )
+                        )
+
+                        Text(
+                            text = stringResource(R.string.ai_coach_memory_description),
+                            fontSize = 12.sp,
+                            color = appColors.textSecondary
+                        )
+
+                        Text(
+                            text = stringResource(R.string.gemini_api_key_info),
+                            fontSize = 12.sp,
+                            color = appColors.textSecondary
+                        )
+
+                        Text(
+                            text = stringResource(R.string.gemini_api_key_link),
+                            fontSize = 14.sp,
+                            color = Blue600,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/app/apikey"))
+                                context.startActivity(intent)
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Section: Language settings
             // ========================================
 
-            // セクションタイトルと説明
+            // Section title and description
             item {
                 Column(
                     modifier = Modifier
@@ -114,13 +305,13 @@ fun SettingsScreenNew(
                 }
             }
 
-            // 言語選択カード
+            // Language selection card
             item {
                 val languagePrefs = remember { LanguagePreferences(context) }
                 var selectedLanguage by remember { mutableStateOf(languagePrefs.getLanguage()) }
                 var showLanguageDialog by remember { mutableStateOf(false) }
 
-                // 現在のシステム言語を取得
+                // Get current system language
                 val currentLocale = Locale.getDefault().language
 
                 Card(
@@ -162,7 +353,7 @@ fun SettingsScreenNew(
                     }
                 }
 
-                // 言語選択ダイアログ
+                // Language selection dialog
                 if (showLanguageDialog) {
                     AlertDialog(
                         onDismissRequest = { showLanguageDialog = false },
@@ -191,7 +382,7 @@ fun SettingsScreenNew(
                                             android.util.Log.d("SettingsScreen", "Language saved, recreating activity")
                                             showLanguageDialog = false
 
-                                            // Activity を再作成して言語を適用
+                                            // Recreate activity to apply language
                                             (context as? Activity)?.recreate()
                                         }
                                     ) {
@@ -215,10 +406,10 @@ fun SettingsScreenNew(
             }
 
             // ========================================
-            // セクション: テーマ設定
+            // Section: Theme Settings
             // ========================================
 
-            // セクションタイトルと説明
+            // Section title and description
             item {
                 Column(
                     modifier = Modifier
@@ -241,7 +432,7 @@ fun SettingsScreenNew(
                 }
             }
 
-            // テーマ選択カード
+            // Theme selection card
             item {
                 var showThemeDialog by remember { mutableStateOf(false) }
 
@@ -287,7 +478,7 @@ fun SettingsScreenNew(
                     }
                 }
 
-                // テーマ選択ダイアログ
+                // Theme selection dialog
                 if (showThemeDialog) {
                     AlertDialog(
                         onDismissRequest = { showThemeDialog = false },
@@ -339,10 +530,10 @@ fun SettingsScreenNew(
             }
 
             // ========================================
-            // セクション: ワークアウト設定
+            // Section: Workout Settings
             // ========================================
 
-            // セクションタイトルと説明
+            // Section title and description
             item {
                 Column(
                     modifier = Modifier
@@ -365,7 +556,7 @@ fun SettingsScreenNew(
                 }
             }
 
-            // ワークアウト設定カード
+            // Workout Settingscard
             item {
                 val workoutPrefs = remember { io.github.gonbei774.calisthenicsmemory.data.WorkoutPreferences(context) }
                 var prefillEnabled by remember { mutableStateOf(workoutPrefs.isPrefillPreviousRecordEnabled()) }
@@ -382,7 +573,7 @@ fun SettingsScreenNew(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // プリフィル設定
+                    // Prefill settings
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -431,7 +622,7 @@ fun SettingsScreenNew(
                         }
                     }
 
-                    // 開始カウントダウン設定
+                    // Start countdown settings
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -481,7 +672,7 @@ fun SettingsScreenNew(
                         }
                     }
 
-                    // セット間インターバル設定
+                    // Set interval settings
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -530,7 +721,7 @@ fun SettingsScreenNew(
                                     )
                                 )
                             }
-                            // 注意書き
+                            // Note
                             Text(
                                 text = stringResource(R.string.set_interval_note),
                                 fontSize = 12.sp,
@@ -540,7 +731,7 @@ fun SettingsScreenNew(
                         }
                     }
 
-                    // LEDフラッシュ通知設定
+                    // LED flash notification settings
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -591,7 +782,7 @@ fun SettingsScreenNew(
                         }
                     }
 
-                    // 画面オン維持設定
+                    // Keep screen on settings
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -643,7 +834,7 @@ fun SettingsScreenNew(
                     }
                 }
 
-                // 開始カウントダウン設定ダイアログ
+                // Start countdown settingsdialog
                 if (showStartCountdownDialog) {
                     var inputValue by remember { mutableStateOf(startCountdown.toString()) }
 
@@ -692,7 +883,7 @@ fun SettingsScreenNew(
                     )
                 }
 
-                // セット間インターバル設定ダイアログ
+                // Set interval settingsdialog
                 if (showSetIntervalDialog) {
                     var inputValue by remember { mutableStateOf(setInterval.toString()) }
                     val maxInterval = io.github.gonbei774.calisthenicsmemory.data.WorkoutPreferences.MAX_SET_INTERVAL
@@ -710,7 +901,7 @@ fun SettingsScreenNew(
                                 value = inputValue,
                                 onValueChange = { newValue ->
                                     if (newValue.isEmpty() || newValue.all { c -> c.isDigit() }) {
-                                        // 上限チェック
+                                        // Upper limit check
                                         val intValue = newValue.toIntOrNull()
                                         if (intValue == null || intValue <= maxInterval) {
                                             inputValue = newValue
@@ -753,10 +944,10 @@ fun SettingsScreenNew(
             }
 
             // ========================================
-            // セクション: データ管理
+            // Section: Data Management
             // ========================================
 
-            // セクションタイトル
+            // Section title
             item {
                 Text(
                     text = stringResource(R.string.data_management),
@@ -767,7 +958,7 @@ fun SettingsScreenNew(
                 )
             }
 
-            // ナビゲーションカード: 完全バックアップ
+            // Navigation card: Full backup
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -812,7 +1003,7 @@ fun SettingsScreenNew(
                 }
             }
 
-            // ナビゲーションカード: 部分データ管理 (CSV)
+            // Navigationcard: Partial Data Management (CSV)
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -857,7 +1048,7 @@ fun SettingsScreenNew(
                 }
             }
 
-            // ナビゲーションカード: Share
+            // Navigation card: Share
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -903,10 +1094,10 @@ fun SettingsScreenNew(
             }
 
             // ========================================
-            // セクション: アプリ情報
+            // Section: App Info
             // ========================================
 
-            // セクションタイトルと説明
+            // Section title and description
             item {
                 Column(
                     modifier = Modifier
@@ -929,7 +1120,7 @@ fun SettingsScreenNew(
                 }
             }
 
-            // アプリ情報カード
+            // App Infocard
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -944,7 +1135,7 @@ fun SettingsScreenNew(
                             .padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // アプリ名と説明（中央揃え）
+                        // App name and description (centered)
                         Column(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
@@ -963,7 +1154,7 @@ fun SettingsScreenNew(
                             )
                         }
 
-                        // バージョン
+                        // Version
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -989,7 +1180,7 @@ fun SettingsScreenNew(
                             }
                         }
 
-                        // ソースコード
+                        // Source code
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1013,7 +1204,7 @@ fun SettingsScreenNew(
                             )
                         }
 
-                        // 使用許諾（ライセンス）
+                        // Open source licenses
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1035,7 +1226,7 @@ fun SettingsScreenNew(
                 }
             }
 
-            // 著者カード
+            // Author card
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -1050,14 +1241,14 @@ fun SettingsScreenNew(
                             .padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // セクションタイトル
+                        // Section title
                         Text(
                             text = stringResource(R.string.app_author),
                             fontSize = 14.sp,
                             color = appColors.textSecondary
                         )
 
-                        // 開発者
+                        // Developer
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -1079,7 +1270,7 @@ fun SettingsScreenNew(
                 }
             }
 
-            // フィードバックカード
+            // Feedback card
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -1094,14 +1285,14 @@ fun SettingsScreenNew(
                             .padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // セクションタイトル
+                        // Section title
                         Text(
                             text = stringResource(R.string.app_feedback),
                             fontSize = 14.sp,
                             color = appColors.textSecondary
                         )
 
-                        // Codebergで問題を報告
+                        // Report issue on Codeberg
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1123,7 +1314,7 @@ fun SettingsScreenNew(
                             )
                         }
 
-                        // GitHubで問題を報告
+                        // Report issue on GitHub
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1152,7 +1343,7 @@ fun SettingsScreenNew(
 }
 
 /**
- * CSV種類を多言語化された文字列に変換する関数
+ * Convert CSV type to localized string
  */
 @Composable
 fun getCsvTypeLocalizedString(csvType: CsvType?): String {
@@ -1165,7 +1356,7 @@ fun getCsvTypeLocalizedString(csvType: CsvType?): String {
 }
 
 /**
- * CSV種類を自動判定する関数
+ * Automatically detect CSV type
  */
 fun detectCsvType(csvString: String): CsvType? {
     val firstLine = csvString.lines()
@@ -1181,7 +1372,7 @@ fun detectCsvType(csvString: String): CsvType? {
 }
 
 /**
- * CSVインポートを実行する関数
+ * Execute CSV import
  */
 suspend fun executeCsvImport(
     viewModel: TrainingViewModel,

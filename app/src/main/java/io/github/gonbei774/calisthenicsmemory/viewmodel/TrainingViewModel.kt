@@ -1,6 +1,7 @@
 package io.github.gonbei774.calisthenicsmemory.viewmodel
 
 import android.app.Application
+import androidx.room.withTransaction
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.gonbei774.calisthenicsmemory.data.AppDatabase
@@ -35,7 +36,7 @@ import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-// バックアップ用データクラス
+// Backup data classes
 @Serializable
 data class BackupData(
     val version: Int,
@@ -44,13 +45,13 @@ data class BackupData(
     val groups: List<ExportGroup>,
     val exercises: List<ExportExercise>,
     val records: List<ExportRecord>,
-    val programs: List<ExportProgram> = emptyList(),           // v4で追加
-    val programExercises: List<ExportProgramExercise> = emptyList(),  // v4で追加
-    val programLoops: List<ExportProgramLoop> = emptyList(),    // v5で追加（後方互換性のためデフォルト空）
-    val intervalPrograms: List<ExportIntervalProgram> = emptyList(),              // v7で追加
-    val intervalProgramExercises: List<ExportIntervalProgramExercise> = emptyList(), // v7で追加
-    val intervalRecords: List<ExportIntervalRecord> = emptyList(),                 // v7で追加
-    val todoTasks: List<ExportTodoTask> = emptyList()                             // v8で追加
+    val programs: List<ExportProgram> = emptyList(),           // Added in v4
+    val programExercises: List<ExportProgramExercise> = emptyList(),  // Added in v4
+    val programLoops: List<ExportProgramLoop> = emptyList(),    // Added in v5 (default empty for backward compatibility)
+    val intervalPrograms: List<ExportIntervalProgram> = emptyList(),              // Added in v7
+    val intervalProgramExercises: List<ExportIntervalProgramExercise> = emptyList(), // Added in v7
+    val intervalRecords: List<ExportIntervalRecord> = emptyList(),                 // Added in v7
+    val todoTasks: List<ExportTodoTask> = emptyList()                             // Added in v8
 )
 
 @Serializable
@@ -67,17 +68,17 @@ data class ExportExercise(
     val type: String,
     val group: String?,
     val sortOrder: Int,
-    val displayOrder: Int = 0,       // 表示順（デフォルト値で後方互換）
+    val displayOrder: Int = 0,       // Display order (backward compatibility)
     val laterality: String,
     val targetSets: Int? = null,
     val targetValue: Int? = null,
-    val isFavorite: Boolean = false, // お気に入り（デフォルト値で後方互換）
-    val restInterval: Int? = null,   // 種目固有の休憩時間（デフォルト値で後方互換）
-    val repDuration: Int? = null,    // 種目固有の1レップ時間（デフォルト値で後方互換）
-    val distanceTrackingEnabled: Boolean = false,  // 距離入力を有効化（v3で追加）
-    val weightTrackingEnabled: Boolean = false,    // 荷重入力を有効化（v3で追加）
-    val assistanceTrackingEnabled: Boolean = false, // アシスト入力を有効化（v6で追加）
-    val description: String? = null                // 種目の説明文（v6で追加）
+    val isFavorite: Boolean = false, // Favorite (default false for backward compatibility)
+    val restInterval: Int? = null,   // Exercise-specific rest interval (backward compatibility)
+    val repDuration: Int? = null,    // Exercise-specific rep duration (backward compatibility)
+    val distanceTrackingEnabled: Boolean = false,  // Enable distance input (added in v3)
+    val weightTrackingEnabled: Boolean = false,    // Enable weight input (added in v3)
+    val assistanceTrackingEnabled: Boolean = false, // Enable assistance input (added in v6)
+    val description: String? = null                // Exercise description (added in v6)
 )
 
 @Serializable
@@ -90,17 +91,18 @@ data class ExportRecord(
     val date: String,
     val time: String,
     val comment: String,
-    val distanceCm: Int? = null,  // 距離（cm、v3で追加）
-    val weightG: Int? = null,     // 追加ウエイト（g、v3で追加）
-    val assistanceG: Int? = null  // アシスト量（g、v6で追加）
+    val distanceCm: Int? = null,  // Distance (cm, added in v3)
+    val weightG: Int? = null,     // Additional weight (g, added in v3)
+    val assistanceG: Int? = null,  // Assistance amount (g, added in v6)
+    val rpe: Int? = null          // RPE (v22 for AI)
 )
 
 @Serializable
 data class ExportProgram(
     val id: Long,
     val name: String
-    // timerMode/startIntervalはSharedPreferencesへ移行（v14）
-    // 旧JSONインポート時はignoreUnknownKeysで無視される
+    // timerMode/startInterval migrated to SharedPreferences (v14)
+    // Ignored by ignoreUnknownKeys during old JSON import
 )
 
 @Serializable
@@ -112,7 +114,7 @@ data class ExportProgramExercise(
     val sets: Int,
     val targetValue: Int,
     val intervalSeconds: Int,
-    val loopId: Long? = null  // v5で追加（後方互換性のためデフォルトnull）
+    val loopId: Long? = null  // Added in v5 (default null for backward compatibility)
 )
 
 @Serializable
@@ -183,7 +185,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     private val intervalRecordDao = database.intervalRecordDao()
 
     companion object {
-        // お気に入りグループの固定キー（UI側で翻訳される）
+        // Fixed key for favorite group (translated in UI)
         const val FAVORITE_GROUP_KEY = "★FAVORITES"
     }
 
@@ -211,7 +213,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
             initialValue = emptyList()
         )
 
-    // Snackbar message (UiMessage型で言語変更に追従)
+    // Snackbar message (UiMessage type follows language changes)
     private val _snackbarMessage = MutableStateFlow<UiMessage?>(null)
     val snackbarMessage: StateFlow<UiMessage?> = _snackbarMessage.asStateFlow()
 
@@ -245,12 +247,12 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         targetSets: Int? = null,
         targetValue: Int? = null,
         isFavorite: Boolean = false,
-        restInterval: Int? = null,       // 種目固有の休憩時間（秒）
-        repDuration: Int? = null,        // 種目固有の1レップ時間（秒）
-        distanceTrackingEnabled: Boolean = false,  // 距離トラッキング有効
-        weightTrackingEnabled: Boolean = false,    // 荷重トラッキング有効
-        assistanceTrackingEnabled: Boolean = false, // アシストトラッキング有効
-        description: String? = null                // 種目の説明文
+        restInterval: Int? = null,       // Exercise-specific rest interval (seconds)
+        repDuration: Int? = null,        // Exercise-specific 1-rep duration (seconds)
+        distanceTrackingEnabled: Boolean = false,  // Distance tracking enabled
+        weightTrackingEnabled: Boolean = false,    // Weight tracking enabled
+        assistanceTrackingEnabled: Boolean = false, // Assistance tracking enabled
+        description: String? = null                // Exercise description
     ) {
         viewModelScope.launch {
             try {
@@ -342,17 +344,17 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     // Training Record operations
-    // セット別の距離/重量/アシストに対応。リストはvaluesと同じindexで整列していることを呼び出し側で保証すること
+    // Supports set-by-set distance/weight/assistance. Caller must ensure lists are aligned with values index.
     fun addTrainingRecords(
         exerciseId: Long,
         values: List<Int>,
         date: String,
         time: String,
         comment: String,
-        distancesCm: List<Int?> = emptyList(),   // セット別距離（cm）
-        weightsG: List<Int?> = emptyList(),      // セット別追加ウエイト（g）
-        assistancesG: List<Int?> = emptyList(),  // セット別アシスト量（g）
-        emitMessage: Boolean = true              // false の場合スナックバー通知を抑制（プログラムモードで合計を1回だけ流すため）
+        distancesCm: List<Int?> = emptyList(),   // Set-by-set distance (cm)
+        weightsG: List<Int?> = emptyList(),      // Set-by-set additional weight (g)
+        assistancesG: List<Int?> = emptyList(),  // Set-by-set assistance amount (g)
+        emitMessage: Boolean = true              // If false, suppress snackbar notification (to show total once in program mode)
     ) {
         viewModelScope.launch {
             try {
@@ -380,7 +382,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    // Unilateral種目用（セット別の距離/重量/アシストに対応）
+    // For Unilateral exercises (supports set-by-set distance/weight/assistance)
     fun addTrainingRecordsUnilateral(
         exerciseId: Long,
         valuesRight: List<Int>,
@@ -388,19 +390,19 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         date: String,
         time: String,
         comment: String,
-        distancesCm: List<Int?> = emptyList(),   // セット別距離（cm）
-        weightsG: List<Int?> = emptyList(),      // セット別追加ウエイト（g）
-        assistancesG: List<Int?> = emptyList(),  // セット別アシスト量（g）
-        emitMessage: Boolean = true              // false の場合スナックバー通知を抑制（プログラムモードで合計を1回だけ流すため）
+        distancesCm: List<Int?> = emptyList(),   // Set-by-set distance (cm)
+        weightsG: List<Int?> = emptyList(),      // Set-by-set additional weight (g)
+        assistancesG: List<Int?> = emptyList(),  // Set-by-set assistance amount (g)
+        emitMessage: Boolean = true              // If false, suppress snackbar notification (to show total once in program mode)
     ) {
         viewModelScope.launch {
             try {
-                // 右側の値を基準にレコードを作成
+                // Create record based on right-side value
                 val records = valuesRight.mapIndexed { index, valueRight ->
                     TrainingRecord(
                         exerciseId = exerciseId,
                         valueRight = valueRight,
-                        valueLeft = valuesLeft.getOrNull(index),  // 左側の値（なければnull）
+                        valueLeft = valuesLeft.getOrNull(index),  // Left-side value (null if none)
                         setNumber = index + 1,
                         date = date,
                         time = time,
@@ -420,7 +422,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    /** プログラムモード保存完了の通知（合計セット数を1回だけ流す） */
+    /** Notification for program mode save completion (shows total sets once) */
     fun notifyProgramSetsRecorded(totalSets: Int) {
         _snackbarMessage.value = UiMessage.ProgramSetsRecorded(totalSets)
     }
@@ -469,13 +471,13 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             flushGroupOrder()
             try {
-                // 1. グループテーブルを更新
+                // 1. Update groups table
                 val group = groupDao.getGroupByName(oldName)
                 if (group != null) {
                     groupDao.updateGroup(group.copy(name = newName))
                 }
 
-                // 2. 種目のgroupフィールドも更新
+                // 2. Also update exercise group fields
                 val affectedExercises = exercises.value.filter { it.group == oldName }
                 affectedExercises.forEach { exercise ->
                     exerciseDao.updateExercise(exercise.copy(group = newName))
@@ -492,16 +494,16 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             flushGroupOrder()
             try {
-                // ToDoの連動削除（グループ削除前にIDを取得）
+                // Linked deletion of ToDo (get IDs before deleting group)
                 val group = groupDao.getGroupByName(groupName)
                 if (group != null) {
                     todoTaskDao.deleteByReference(TodoTask.TYPE_GROUP, group.id)
                 }
 
-                // 1. グループテーブルから削除
+                // 1. Delete from groups table
                 groupDao.deleteGroupByName(groupName)
 
-                // 2. 種目のgroupをnullに
+                // 2. Set exercise group to null
                 val affectedExercises = exercises.value.filter { it.group == groupName }
                 affectedExercises.forEach { exercise ->
                     exerciseDao.updateExercise(exercise.copy(group = null, sortOrder = 0))
@@ -514,16 +516,16 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         }
     }
     // ========================================
-    // 階層表示用データ構造
+    // Data structure for hierarchical display
     // ========================================
 
     data class GroupWithExercises(
-        val groupName: String?,  // nullは「グループなし」
+        val groupName: String?,  // null means "no group"
         val exercises: List<Exercise>,
-        val isExpanded: Boolean = true  // 展開状態
+        val isExpanded: Boolean = true  // Expanded state
     )
 
-    // 展開状態管理
+    // Expanded statemanagement
     private val _expandedGroups = MutableStateFlow<Set<String>>(emptySet())
     val expandedGroups: StateFlow<Set<String>> = _expandedGroups.asStateFlow()
 
@@ -535,10 +537,10 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    // グループ並び替え用ローカルステート（画面離脱時にDBに保存）
+    // Local state for group reordering (saved to DB on screen exit)
     private val _localGroupOrder = MutableStateFlow<List<ExerciseGroup>?>(null)
 
-    // 階層データ準備
+    // Hierarchical data preparation
     val hierarchicalExercises: StateFlow<List<GroupWithExercises>> =
         combine(groups, exercises, expandedGroups, _localGroupOrder) { dbGroups, exercises, expanded, localOrder ->
             prepareHierarchicalData(localOrder ?: dbGroups, exercises, expanded)
@@ -553,8 +555,8 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         exercises: List<Exercise>,
         expandedGroups: Set<String>
     ): List<GroupWithExercises> {
-        // 0. お気に入りグループ（先頭に追加、0件でも表示）
-        // 固定キーを使用（UI側で翻訳）
+        // 0. Favorite group (added to top, shown even if empty)
+        // Use fixed key (translated in UI)
         val favoriteGroupKey = FAVORITE_GROUP_KEY
         val favoriteExercises = exercises.filter { it.isFavorite }.sortedBy { it.displayOrder }
         val favoriteGroup = listOf(
@@ -565,60 +567,60 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
             )
         )
 
-        // 1. groupsテーブルを基準にグループを表示（0件でも表示）
-        // groups は既に displayOrder 順で取得されている
+        // 1. Show groups based on groups table (shown even if empty)
+        // groups are already retrieved in displayOrder sequence
         val groupedExercises = groups.map { group ->
             val groupExercises = exercises.filter { it.group == group.name }
             GroupWithExercises(
                 groupName = group.name,
                 exercises = groupExercises.sortedBy { it.displayOrder },
-                isExpanded = group.name in expandedGroups  // 全て閉じた状態も可能
+                isExpanded = group.name in expandedGroups  // All-closed state also possible
             )
         }
 
-        // 2. グループなし種目
+        // 2. Ungrouped exercises
         val ungroupedExercises = exercises.filter { it.group == null }
         val ungroupedGroup = if (ungroupedExercises.isNotEmpty()) {
             listOf(
                 GroupWithExercises(
                     groupName = null,
                     exercises = ungroupedExercises.sortedBy { it.displayOrder },
-                    isExpanded = "ungrouped" in expandedGroups  // 全て閉じた状態も可能
+                    isExpanded = "ungrouped" in expandedGroups  // All-closed state also possible
                 )
             )
         } else {
             emptyList()
         }
 
-        // お気に入りグループを先頭に配置
+        // Place favorite group at the top
         return favoriteGroup + groupedExercises + ungroupedGroup
     }
 
     // ========================================
-    // 並び替え機能
+    // Reordering function
     // ========================================
 
     /**
-     * 種目の並び順を変更する
-     * @param groupName グループ名（null = グループなし、FAVORITE_GROUP_KEY = お気に入り）
-     * @param fromIndex 移動元のインデックス
-     * @param toIndex 移動先のインデックス
+     * Change exercise order
+     * @param groupName Group name (null = no group, FAVORITE_GROUP_KEY = favorites)
+     * @param fromIndex Source index
+     * @param toIndex Destination index
      */
     fun reorderExercises(groupName: String?, fromIndex: Int, toIndex: Int) {
         viewModelScope.launch {
-            // お気に入りグループでは並び替え不可（元のグループでの順序に影響するため）
+            // Reordering not allowed in favorite group (affects original group order)
             if (groupName == FAVORITE_GROUP_KEY) {
                 return@launch
             }
 
-            // 対象グループの種目を取得
+            // Get exercises for target group
             val targetExercises = when (groupName) {
                 null -> {
-                    // グループなし
+                    // No group
                     exerciseDao.getUngroupedExercises()
                 }
                 else -> {
-                    // 通常グループ
+                    // Normal group
                     exerciseDao.getExercisesByGroup(groupName)
                 }
             }
@@ -629,12 +631,12 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                 return@launch
             }
 
-            // 並び替え
+            // Reorder
             val reordered = targetExercises.toMutableList()
             val item = reordered.removeAt(fromIndex)
             reordered.add(toIndex, item)
 
-            // displayOrderを更新
+            // Update displayOrder
             reordered.forEachIndexed { index, exercise ->
                 exerciseDao.updateExercise(exercise.copy(displayOrder = index))
             }
@@ -642,8 +644,8 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
-     * グループの並び順を変更する（ローカルステートのみ更新）
-     * DBへの保存は saveGroupOrder() で行う
+     * Change group order (update local state only)
+     * Saving to DB is done by saveGroupOrder()
      */
     fun reorderGroups(fromIndex: Int, toIndex: Int) {
         val current = (_localGroupOrder.value ?: groups.value).toList()
@@ -661,7 +663,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
-     * 保留中のグループ並び順をDBに保存する
+     * Save pending group order to DB
      */
     fun saveGroupOrder() {
         val order = _localGroupOrder.value ?: return
@@ -674,7 +676,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
-     * 保留中のグループ並び順をDBに保存する（suspend版・内部用）
+     * Save pending group order to DB(suspend version, for internal use)
      */
     private suspend fun flushGroupOrder() {
         val order = _localGroupOrder.value ?: return
@@ -685,11 +687,11 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     // ========================================
-    // エクスポート・インポート機能
+    // Export/Import features
     // ========================================
 
     /**
-     * データをJSON形式でエクスポート
+     * Export data in JSON format
      */
     suspend fun exportData(): String = withContext(Dispatchers.IO) {
         try {
@@ -742,7 +744,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                 )
             }
 
-            // プログラムをエクスポート（v4で追加）
+            // Export programs (added in v4)
             val currentPrograms = programs.value
             val exportPrograms = currentPrograms.map { program ->
                 ExportProgram(
@@ -751,7 +753,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                 )
             }
 
-            // プログラム内種目をエクスポート（v4で追加、v5でloopId追加）
+            // Export program exercises (added in v4, loopId added in v5)
             val allProgramExercises = mutableListOf<ExportProgramExercise>()
             currentPrograms.forEach { program ->
                 val programExercises = programExerciseDao.getExercisesForProgramSync(program.id)
@@ -765,13 +767,13 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                             sets = pe.sets,
                             targetValue = pe.targetValue,
                             intervalSeconds = pe.intervalSeconds,
-                            loopId = pe.loopId  // v5で追加
+                            loopId = pe.loopId  // v5added
                         )
                     )
                 }
             }
 
-            // プログラムループをエクスポート（v5で追加）
+            // Export program loops (added in v5)
             val allProgramLoops = mutableListOf<ExportProgramLoop>()
             currentPrograms.forEach { program ->
                 val loops = programLoopDao.getLoopsForProgramSync(program.id)
@@ -788,7 +790,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                 }
             }
 
-            // インターバルプログラムをエクスポート（v7で追加）
+            // Export interval programs (added in v7)
             val currentIntervalPrograms = intervalPrograms.value
             val exportIntervalPrograms = currentIntervalPrograms.map { program ->
                 ExportIntervalProgram(
@@ -801,7 +803,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                 )
             }
 
-            // インターバルプログラム内種目をエクスポート（v7で追加）
+            // Export interval program exercises (added in v7)
             val allIntervalProgramExercises = mutableListOf<ExportIntervalProgramExercise>()
             currentIntervalPrograms.forEach { program ->
                 val exercises = intervalProgramExerciseDao.getExercisesForProgramSync(program.id)
@@ -817,7 +819,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                 }
             }
 
-            // インターバル記録をエクスポート（v7で追加）
+            // Export interval records (added in v7)
             val currentIntervalRecords = intervalRecords.value
             val exportIntervalRecords = currentIntervalRecords.map { record ->
                 ExportIntervalRecord(
@@ -836,7 +838,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                 )
             }
 
-            // ToDoタスクをエクスポート（v8で追加）
+            // Export ToDo tasks (added in v8)
             val currentTodoTasks = todoTasks.value
             val exportTodoTasks = currentTodoTasks.map { task ->
                 ExportTodoTask(
@@ -850,7 +852,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
             }
 
             val backupData = BackupData(
-                version = 8,  // v8: ToDoタスク追加
+                version = 8,  // v8: Added ToDo tasks
                 exportDate = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
                 app = "CalisthenicsMemory",
                 groups = exportGroups,
@@ -880,12 +882,12 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
-     * JSONデータをインポート（完全上書き）
+     * Import JSON data (full overwrite)
      */
     suspend fun importData(jsonString: String) {
         withContext(Dispatchers.IO) {
             try {
-                // ファイル種別チェック: コミュニティ共有JSONが渡された場合はエラー
+                // File type check: error if community share JSON is passed
                 if (detectJsonFileType(jsonString) == "share") {
                     withContext(Dispatchers.Main) {
                         _snackbarMessage.value = UiMessage.WrongFileType(
@@ -899,10 +901,10 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                 val json = Json { ignoreUnknownKeys = true }
                 val backupData = json.decodeFromString<BackupData>(jsonString)
 
-                // 1. 既存データを全削除
+                // 1. Delete all existing data
                 database.clearAllTables()
 
-                // 2. グループをインポート
+                // 2. Import groups
                 backupData.groups.forEach { exportGroup ->
                     val group = ExerciseGroup(
                         id = exportGroup.id,
@@ -912,7 +914,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     groupDao.insertGroup(group)
                 }
 
-                // 3. 種目をインポート
+                // 3. Import exercises
                 backupData.exercises.forEach { exportExercise ->
                     val exercise = Exercise(
                         id = exportExercise.id,
@@ -935,7 +937,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     exerciseDao.insertExercise(exercise)
                 }
 
-                // 4. 記録をインポート
+                // 4. Import records
                 backupData.records.forEach { exportRecord ->
                     val record = TrainingRecord(
                         id = exportRecord.id,
@@ -953,7 +955,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     recordDao.insertRecord(record)
                 }
 
-                // 5. プログラムをインポート（v4で追加）
+                // 5. Import programs (added in v4)
                 backupData.programs.forEach { exportProgram ->
                     val program = Program(
                         id = exportProgram.id,
@@ -962,9 +964,9 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     programDao.insert(program)
                 }
 
-                // 6. プログラムループをインポート（v5で追加）
-                // ループを先にインポートしてからProgramExerciseをインポートする
-                // （ProgramExerciseがloopIdを参照するため）
+                // 6. Import program loops (added in v5)
+                // Import loops first, then ProgramExercises
+                // (Because ProgramExercise references loopId)
                 backupData.programLoops.forEach { exportLoop ->
                     val loop = ProgramLoop(
                         id = exportLoop.id,
@@ -976,7 +978,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     programLoopDao.insert(loop)
                 }
 
-                // 7. プログラム内種目をインポート（v4で追加、v5でloopId追加）
+                // 7. Import program exercises (added in v4, loopId added in v5)
                 backupData.programExercises.forEach { exportPe ->
                     val programExercise = ProgramExercise(
                         id = exportPe.id,
@@ -986,12 +988,12 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                         sets = exportPe.sets,
                         targetValue = exportPe.targetValue,
                         intervalSeconds = exportPe.intervalSeconds,
-                        loopId = exportPe.loopId  // v5で追加（v4以前のバックアップではnull）
+                        loopId = exportPe.loopId  // v5added(null for backups before v4)
                     )
                     programExerciseDao.insert(programExercise)
                 }
 
-                // 8. インターバルプログラムをインポート（v7で追加）
+                // 8. Import interval programs (added in v7)
                 backupData.intervalPrograms.forEach { exportIp ->
                     val intervalProgram = IntervalProgram(
                         id = exportIp.id,
@@ -1004,7 +1006,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     intervalProgramDao.insert(intervalProgram)
                 }
 
-                // 9. インターバルプログラム内種目をインポート（v7で追加）
+                // 9. Import interval program exercises (added in v7)
                 backupData.intervalProgramExercises.forEach { exportIpe ->
                     val intervalProgramExercise = IntervalProgramExercise(
                         id = exportIpe.id,
@@ -1015,7 +1017,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     intervalProgramExerciseDao.insert(intervalProgramExercise)
                 }
 
-                // 10. インターバル記録をインポート（v7で追加）
+                // 10. Import interval records (added in v7)
                 backupData.intervalRecords.forEach { exportIr ->
                     val intervalRecord = IntervalRecord(
                         id = exportIr.id,
@@ -1034,7 +1036,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     intervalRecordDao.insert(intervalRecord)
                 }
 
-                // 11. ToDoタスクをインポート（v8で追加）
+                // 11. Import ToDo tasks (added in v8)
                 backupData.todoTasks.forEach { exportTask ->
                     val task = TodoTask(
                         id = exportTask.id,
@@ -1059,11 +1061,11 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     // ========================================
-    // CSV エクスポート・インポート機能
+    // CSV Export/Import features
     // ========================================
 
     /**
-     * グループCSVをエクスポート
+     * Export groups CSV
      */
     suspend fun exportGroups(): String = withContext(Dispatchers.IO) {
         try {
@@ -1090,7 +1092,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
-     * 種目CSVをエクスポート
+     * Export exercises CSV
      */
     suspend fun exportExercises(): String = withContext(Dispatchers.IO) {
         try {
@@ -1124,8 +1126,8 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
-     * 記録入力用テンプレートCSVをエクスポート
-     * 種目リスト + コメント例
+     * Export records template CSV
+     * Exercise list + comment examples
      */
     suspend fun exportRecordTemplate(): String = withContext(Dispatchers.IO) {
         try {
@@ -1133,10 +1135,10 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
 
             val csvBuilder = StringBuilder()
 
-            // ヘッダー (v12: 11列)
+            // Header (v12: 11 columns)
             csvBuilder.appendLine("exerciseName,exerciseType,date,time,setNumber,valueRight,valueLeft,comment,distanceCm,weightG,assistanceG")
 
-            // 入力例（コメント - 英語のみ）
+            // Example input (comments in English only)
             csvBuilder.appendLine("# Example: Multiple sets with same date/time (one session)")
             csvBuilder.appendLine("# Wall Push-up,Dynamic,2025-11-09,10:00,1,20,,Morning session,,,")
             csvBuilder.appendLine("# Wall Push-up,Dynamic,2025-11-09,10:00,2,19,,Morning session,,,")
@@ -1150,7 +1152,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
             csvBuilder.appendLine("# Pull-up,Dynamic,2025-11-09,11:00,1,5,,With band,,,22000")
             csvBuilder.appendLine("#")
 
-            // 種目リスト（空欄テンプレート）
+            // Exercise list (blank template)
             currentExercises.forEach { exercise ->
                 csvBuilder.appendLine("${exercise.name},${exercise.type},,,,,,,,,")
             }
@@ -1169,22 +1171,22 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
-     * 実際の記録データをCSV形式でエクスポート (v12: 11列)
+     * Export actual records in CSV format (v12: 11 columns)
      */
     suspend fun exportRecords(): String = withContext(Dispatchers.IO) {
         try {
             val currentRecords = records.value
             val currentExercises = exercises.value
 
-            // 種目IDから種目情報へのマップを作成
+            // Create map from exercise ID to info
             val exerciseMap = currentExercises.associateBy { it.id }
 
             val csvBuilder = StringBuilder()
 
-            // ヘッダー (v12: 11列)
+            // Header (v12: 11 columns)
             csvBuilder.appendLine("exerciseName,exerciseType,date,time,setNumber,valueRight,valueLeft,comment,distanceCm,weightG,assistanceG")
 
-            // 記録データを出力（日付・時刻・セット番号で並べ替え）
+            // Output records (sorted by date, time, set number)
             currentRecords
                 .sortedWith(compareBy({ it.date }, { it.time }, { it.setNumber }))
                 .forEach { record ->
@@ -1216,7 +1218,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
-     * グループCSVをインポート（マージモード）
+     * Import groups CSV (merge mode)
      */
     suspend fun importGroups(csvString: String): CsvImportReport = withContext(Dispatchers.IO) {
         var successCount = 0
@@ -1236,7 +1238,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                 return@withContext CsvImportReport(CsvType.GROUPS, 0, 0, 0, emptyList(), emptyList())
             }
 
-            // ヘッダー行をスキップ
+            // Skip header row
             val dataLines = lines.drop(1)
 
             dataLines.forEachIndexed { index, line ->
@@ -1249,7 +1251,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                         return@forEachIndexed
                     }
 
-                    // 重複チェック
+                    // Duplicate check
                     val existing = groupDao.getGroupByName(name)
                     if (existing != null) {
                         skippedItems.add("\"$name\" (already exists)")
@@ -1277,9 +1279,9 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
-     * 種目CSVをインポート（マージモード）
-     * - 8列（旧フォーマット）と11列（新フォーマット）の両方に対応
-     * - グループが存在しない場合は自動作成
+     * Import exercises CSV (merge mode)
+     * - Supports both 8 columns (old format) and 11 columns (new format)
+     * - Auto-create group if it does not exist
      */
     suspend fun importExercises(csvString: String): CsvImportReport = withContext(Dispatchers.IO) {
         var successCount = 0
@@ -1300,13 +1302,13 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                 return@withContext CsvImportReport(CsvType.EXERCISES, 0, 0, 0, emptyList(), emptyList())
             }
 
-            // ヘッダー行をスキップ
+            // Skip header row
             val dataLines = lines.drop(1)
 
             dataLines.forEachIndexed { index, line ->
                 try {
                     val columns = line.split(",")
-                    // 8列（旧フォーマット）または11列（新フォーマット）を許容
+                    // Allow 8 columns (old format) or 11 columns (new format)
                     if (columns.size < 8) {
                         errors.add("Line ${index + 2}: Invalid format (expected at least 8 columns, got ${columns.size})")
                         errorCount++
@@ -1322,7 +1324,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     val targetValueStr = columns[6].trim()
                     val isFavoriteStr = columns[7].trim()
 
-                    // 新フィールド（9列目以降、オプション）
+                    // New fields (9th column onwards, optional)
                     val displayOrderStr = columns.getOrNull(8)?.trim() ?: ""
                     val restIntervalStr = columns.getOrNull(9)?.trim() ?: ""
                     val repDurationStr = columns.getOrNull(10)?.trim() ?: ""
@@ -1331,14 +1333,14 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     val assistanceTrackingEnabledStr = columns.getOrNull(13)?.trim() ?: ""
                     val descriptionStr = columns.getOrNull(14)?.trim() ?: ""
 
-                    // 必須フィールドチェック
+                    // Required field check
                     if (name.isEmpty() || type.isEmpty() || laterality.isEmpty()) {
                         errors.add("Line ${index + 2}: Missing required fields (name, type, or laterality)")
                         errorCount++
                         return@forEachIndexed
                     }
 
-                    // バリデーション
+                    // Validation
                     if (type !in listOf("Dynamic", "Isometric")) {
                         errors.add("Line ${index + 2}: Invalid type \"$type\" (must be Dynamic or Isometric)")
                         errorCount++
@@ -1351,18 +1353,18 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                         return@forEachIndexed
                     }
 
-                    // グループの存在チェック（なければ自動作成）
+                    // Check if group exists (auto-create if not)
                     if (group != null) {
                         val groupExists = groupDao.getGroupByName(group) != null
                         if (!groupExists) {
-                            // グループを自動作成
+                            // Auto-create group
                             val newGroup = ExerciseGroup(name = group)
                             groupDao.insertGroup(newGroup)
                             groupsCreatedCount++
                         }
                     }
 
-                    // 数値変換
+                    // Number conversion
                     val sortOrder = sortOrderStr.toIntOrNull() ?: 0
                     val targetSets = targetSetsStr.toIntOrNull()
                     val targetValue = targetValueStr.toIntOrNull()
@@ -1375,18 +1377,18 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     val assistanceTrackingEnabled = assistanceTrackingEnabledStr.toBooleanStrictOrNull() ?: false
                     val description = descriptionStr.ifEmpty { null }
 
-                    // 重複チェック
+                    // Duplicate check
                     val existing = exercises.value.find {
                         it.name == name && it.type == type
                     }
                     if (existing != null) {
-                        // laterality不一致の場合はスキップ
+                        // Skip if laterality mismatch
                         if (existing.laterality != laterality) {
                             skippedItems.add("\"$name, $type\" (laterality mismatch: existing=${existing.laterality}, CSV=$laterality)")
                             skippedCount++
                             return@forEachIndexed
                         }
-                        // 完全一致の場合もスキップ
+                        // Skip if exact match
                         skippedItems.add("\"$name, $type\" (already exists)")
                         skippedCount++
                         return@forEachIndexed
@@ -1436,7 +1438,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
-     * CSVから記録をインポート（マージモード）
+     * Import records from CSV (merge mode)
      */
     suspend fun importRecordsFromCsv(csvString: String): CsvImportReport = withContext(Dispatchers.IO) {
         var successCount = 0
@@ -1456,7 +1458,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                 return@withContext CsvImportReport(CsvType.RECORDS, 0, 0, 1, emptyList(), listOf("CSV file is empty"))
             }
 
-            // ヘッダー行をスキップ
+            // Skip header row
             val dataLines = lines.drop(1)
 
             dataLines.forEachIndexed { index, line ->
@@ -1476,13 +1478,13 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     val valueRightStr = columns[5].trim()
                     val valueLeftStr = columns[6].trim()
                     val comment = columns.getOrNull(7)?.trim() ?: ""
-                    // v11+ 新フィールド（オプション）
+                    // v11+ new fields (optional)
                     val distanceCmStr = columns.getOrNull(8)?.trim() ?: ""
                     val weightGStr = columns.getOrNull(9)?.trim() ?: ""
-                    // v12 新フィールド（オプション）
+                    // v12 new fields (optional)
                     val assistanceGStr = columns.getOrNull(10)?.trim() ?: ""
 
-                    // 必須フィールドチェック
+                    // Required field check
                     if (exerciseName.isEmpty() || exerciseType.isEmpty() ||
                         date.isEmpty() || time.isEmpty() ||
                         setNumberStr.isEmpty() || valueRightStr.isEmpty()) {
@@ -1491,7 +1493,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                         return@forEachIndexed
                     }
 
-                    // 種目を検索
+                    // Search for exercise
                     val exercise = exercises.value.find {
                         it.name == exerciseName && it.type == exerciseType
                     }
@@ -1502,7 +1504,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                         return@forEachIndexed
                     }
 
-                    // 数値変換
+                    // Number conversion
                     val setNumber = setNumberStr.toIntOrNull()
                     val valueRight = valueRightStr.toIntOrNull()
                     val valueLeft = if (valueLeftStr.isEmpty()) null else valueLeftStr.toIntOrNull()
@@ -1516,7 +1518,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                         return@forEachIndexed
                     }
 
-                    // 重複チェック
+                    // Duplicate check
                     val isDuplicate = records.value.any { existingRecord ->
                         existingRecord.exerciseId == exercise.id &&
                         existingRecord.date == date &&
@@ -1530,7 +1532,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                         return@forEachIndexed
                     }
 
-                    // レコード作成
+                    // Create record
                     val record = TrainingRecord(
                         exerciseId = exercise.id,
                         valueRight = valueRight,
@@ -1563,7 +1565,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     // ========================================
-    // To Do Task 操作
+    // To Do Task operations
     // ========================================
 
     val todoTasks: StateFlow<List<TodoTask>> = todoTaskDao.getAllTasks()
@@ -1724,7 +1726,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     todoTaskDao.deleteByReference(type, referenceId)
                 }
 
-                // 種目完了時にグループToDoの完了もチェック
+                // Check group ToDo completion when exercise is done
                 if (type == TodoTask.TYPE_EXERCISE) {
                     checkGroupTodoCompletion(referenceId)
                 }
@@ -1739,10 +1741,10 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         val groupName = exercise.group ?: return
         val group = groupDao.getGroupByName(groupName) ?: return
 
-        // このグループがToDoに登録されているか
+        // Check if this group is registered in ToDo
         val groupTask = todoTaskDao.getTaskByReference(TodoTask.TYPE_GROUP, group.id) ?: return
 
-        // 今日のアクティブなタスクかチェック
+        // Check if it is an active task for today
         val todayStr = java.time.LocalDate.now().toString()
         if (groupTask.isRepeating()) {
             val todayDayNumber = java.time.LocalDate.now().dayOfWeek.value
@@ -1750,7 +1752,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
             if (groupTask.lastCompletedDate == todayStr) return
         }
 
-        // グループ内の全種目に今日の記録があるか確認
+        // Verify if all exercises in the group have records for today
         val groupExercises = exercises.value.filter { it.group == groupName }
         val allCompleted = groupExercises.all { ex ->
             recordDao.hasRecordOnDate(ex.id, todayStr)
@@ -1806,15 +1808,15 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
-     * 指定した種目の前回セッション記録を取得
-     * オートフィル機能用
+     * Get last session records for specified exercise
+     * For auto-fill feature
      */
     suspend fun getLatestSession(exerciseId: Long): List<TrainingRecord> {
         return recordDao.getLatestSessionByExercise(exerciseId)
     }
 
     // ========================================
-    // Program 操作
+    // Program operations
     // ========================================
 
     val programs: StateFlow<List<Program>> = programDao.getAllPrograms()
@@ -1914,7 +1916,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     // ========================================
-    // ProgramExercise 操作
+    // ProgramExercise operations
     // ========================================
 
     fun getProgramExercisesFlow(programId: Long) = programExerciseDao.getExercisesForProgram(programId)
@@ -2018,7 +2020,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     // ========================================
-    // ProgramLoop 操作
+    // ProgramLoop operations
     // ========================================
 
     fun getProgramLoopsFlow(programId: Long) = programLoopDao.getLoopsForProgram(programId)
@@ -2102,7 +2104,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     // ========================================
-    // IntervalProgram 操作
+    // IntervalProgram operations
     // ========================================
 
     val intervalPrograms: StateFlow<List<IntervalProgram>> = intervalProgramDao.getAllPrograms()
@@ -2191,7 +2193,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     // ========================================
-    // IntervalProgramExercise 操作
+    // IntervalProgramExercise operations
     // ========================================
 
     fun getIntervalProgramExercisesFlow(programId: Long) =
@@ -2245,7 +2247,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     // ========================================
-    // IntervalRecord 操作
+    // IntervalRecord operations
     // ========================================
 
     val intervalRecords: StateFlow<List<IntervalRecord>> = intervalRecordDao.getAllRecords()
@@ -2289,11 +2291,11 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     // ========================================
-    // コミュニティシェア エクスポート・インポート機能
+    // Community Share Export/Import features
     // ========================================
 
     /**
-     * JSON文字列のファイル種別を判定する
+     * Determine file type of JSON string
      * @return "backup", "share", "unknown"
      */
     fun detectJsonFileType(jsonString: String): String {
@@ -2320,7 +2322,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
-     * 選択されたプログラム・インターバル・種目をコミュニティ共有用JSONにエクスポート
+     * Export selected programs, intervals, and exercises to community share JSON
      */
     suspend fun exportCommunityShare(
         selectedProgramIds: Set<Long>,
@@ -2328,20 +2330,20 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         selectedExerciseIds: Set<Long>
     ): String = withContext(Dispatchers.IO) {
         try {
-            // 全種目IDを集約（直接選択 + 依存種目）
+            // Aggregate all exercise IDs (direct selection + dependencies)
             val allExerciseIds = selectedExerciseIds.toMutableSet()
 
-            // プログラムの依存種目を収集
+            // Collect program dependencies
             val sharePrograms = mutableListOf<ShareProgram>()
             for (programId in selectedProgramIds) {
                 val program = programDao.getProgramById(programId) ?: continue
                 val programExercises = programExerciseDao.getExercisesForProgramSync(programId)
                 val programLoops = programLoopDao.getLoopsForProgramSync(programId)
 
-                // 依存種目IDを追加
+                // Add dependency exercise IDs
                 programExercises.forEach { pe -> allExerciseIds.add(pe.exerciseId) }
 
-                // ループIDをローカル連番にマッピング
+                // Map loop IDs to local sequence
                 val loopIdMap = mutableMapOf<Long, Int>()
                 programLoops.forEachIndexed { index, loop ->
                     loopIdMap[loop.id] = index + 1
@@ -2378,13 +2380,13 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                 )
             }
 
-            // インターバルプログラムの依存種目を収集
+            // Collect interval program dependencies
             val shareIntervalPrograms = mutableListOf<ShareIntervalProgram>()
             for (intervalId in selectedIntervalProgramIds) {
                 val interval = intervalProgramDao.getProgramById(intervalId) ?: continue
                 val intervalExercises = intervalProgramExerciseDao.getExercisesForProgramSync(intervalId)
 
-                // 依存種目IDを追加
+                // Add dependency exercise IDs
                 intervalExercises.forEach { ie -> allExerciseIds.add(ie.exerciseId) }
 
                 val shareIntervalExercises = intervalExercises.map { ie ->
@@ -2408,7 +2410,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                 )
             }
 
-            // 種目を収集、重複排除
+            // Collect exercises, remove duplicates
             val exerciseMap = mutableMapOf<Long, ShareExercise>()
             val groupNames = mutableSetOf<String>()
             for (exerciseId in allExerciseIds) {
@@ -2433,7 +2435,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
 
             val shareGroups = groupNames.sorted().map { ShareGroup(name = it) }
 
-            // アプリバージョン取得
+            // Get app version
             val appVersion = try {
                 val packageInfo = getApplication<android.app.Application>().packageManager
                     .getPackageInfo(getApplication<android.app.Application>().packageName, 0)
@@ -2475,7 +2477,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
-     * コミュニティ共有JSONをインポート
+     * Import community share JSON
      */
     suspend fun previewCommunityShareImport(data: CommunityShareData): CommunityShareImportReport = withContext(Dispatchers.IO) {
         val content = data.data
@@ -2488,13 +2490,13 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         var intervalProgramsAdded = 0
         var intervalProgramsSkipped = 0
 
-        // グループ
+        // Groups
         for (shareGroup in content.groups) {
             val existing = groupDao.getGroupByName(shareGroup.name)
             if (existing != null) groupsReused++ else groupsAdded++
         }
 
-        // 種目
+        // Exercises
         val seenExerciseKeys = mutableSetOf<String>()
         for (shareExercise in content.exercises) {
             val key = "${shareExercise.name}|${shareExercise.type}"
@@ -2503,13 +2505,13 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
             if (existing != null) exercisesSkipped++ else exercisesAdded++
         }
 
-        // プログラム
+        // Programs
         for (shareProgram in content.programs) {
             val existing = programDao.getProgramByName(shareProgram.name)
             if (existing != null) programsSkipped++ else programsAdded++
         }
 
-        // インターバル
+        // Intervals
         for (shareInterval in content.intervalPrograms) {
             val existing = intervalProgramDao.getProgramByName(shareInterval.name)
             if (existing != null) intervalProgramsSkipped++ else intervalProgramsAdded++
@@ -2529,7 +2531,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
 
     suspend fun importCommunityShare(jsonString: String): CommunityShareImportReport = withContext(Dispatchers.IO) {
         try {
-            // ファイル種別チェック: バックアップJSONが渡された場合はエラー
+            // File type check: error if backup JSON is passed
             if (detectJsonFileType(jsonString) == "backup") {
                 withContext(Dispatchers.Main) {
                     _snackbarMessage.value = UiMessage.WrongFileType(
@@ -2545,7 +2547,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
             val json = Json { ignoreUnknownKeys = true }
             val shareData = json.decodeFromString<CommunityShareData>(jsonString)
 
-            // バリデーション
+            // Validation
             val validationErrors = validateCommunityShareContent(shareData)
             if (validationErrors.isNotEmpty()) {
                 withContext(Dispatchers.Main) {
@@ -2565,11 +2567,13 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
             var programsSkipped = 0
             var intervalProgramsAdded = 0
             var intervalProgramsSkipped = 0
+            val importedProgramIds = mutableListOf<Long>()
+            val importedIntervalProgramIds = mutableListOf<Long>()
 
-            // displayOrder の現在最大値を取得
+            // Get current maximum displayOrder
             var nextDisplayOrder = exerciseDao.getMaxDisplayOrder() + 1
 
-            // 1. グループをインポート
+            // 1. Import groups
             for (shareGroup in content.groups) {
                 val existing = groupDao.getGroupByName(shareGroup.name)
                 if (existing != null) {
@@ -2580,13 +2584,13 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                 }
             }
 
-            // 2. 種目をインポート（名前+タイプでマッチ、重複はスキップ）
+            // 2. Import exercises (match by name+type, skip duplicates)
             // exerciseIdMap: "name|type" -> DB ID
             val exerciseIdMap = mutableMapOf<String, Long>()
             val seenExerciseKeys = mutableSetOf<String>()
             for (shareExercise in content.exercises) {
                 val key = "${shareExercise.name}|${shareExercise.type}"
-                // JSON内重複は先勝ち
+                // First duplicate in JSON wins
                 if (!seenExerciseKeys.add(key)) continue
 
                 val existing = exerciseDao.getExerciseByNameAndType(shareExercise.name, shareExercise.type)
@@ -2616,18 +2620,19 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                 }
             }
 
-            // 3. プログラムをインポート
+            // 3. Import programs
             for (shareProgram in content.programs) {
                 val existing = programDao.getProgramByName(shareProgram.name)
                 if (existing != null) {
                     programsSkipped++
+                    importedProgramIds.add(existing.id)
                     continue
                 }
 
-                // プログラム作成
+                // Programs creation
                 val newProgramId = programDao.insert(Program(name = shareProgram.name))
 
-                // ループ作成（ローカルID → DB IDマッピング）
+                // Create loops (local ID -> DB ID mapping)
                 val loopIdMap = mutableMapOf<Int, Long>()
                 for (shareLoop in shareProgram.loops) {
                     val newLoopId = programLoopDao.insert(
@@ -2641,7 +2646,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     loopIdMap[shareLoop.id] = newLoopId
                 }
 
-                // ProgramExercise作成
+                // Create ProgramExercise
                 for (sharePe in shareProgram.exercises) {
                     val exerciseKey = "${sharePe.exerciseName}|${sharePe.exerciseType}"
                     val exerciseId = exerciseIdMap[exerciseKey] ?: continue
@@ -2658,18 +2663,20 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     )
                 }
 
+                importedProgramIds.add(newProgramId)
                 programsAdded++
             }
 
-            // 4. インターバルプログラムをインポート
+            // 4. Import interval programs
             for (shareInterval in content.intervalPrograms) {
                 val existing = intervalProgramDao.getProgramByName(shareInterval.name)
                 if (existing != null) {
                     intervalProgramsSkipped++
+                    importedIntervalProgramIds.add(existing.id)
                     continue
                 }
 
-                // インターバルプログラム作成
+                // Intervals program creation
                 val newIntervalId = intervalProgramDao.insert(
                     IntervalProgram(
                         name = shareInterval.name,
@@ -2680,7 +2687,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     )
                 )
 
-                // IntervalProgramExercise作成
+                // Create IntervalProgramExercise
                 for (shareIe in shareInterval.exercises) {
                     val exerciseKey = "${shareIe.exerciseName}|${shareIe.exerciseType}"
                     val exerciseId = exerciseIdMap[exerciseKey] ?: continue
@@ -2693,6 +2700,7 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     )
                 }
 
+                importedIntervalProgramIds.add(newIntervalId)
                 intervalProgramsAdded++
             }
 
@@ -2704,7 +2712,9 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                 programsAdded = programsAdded,
                 programsSkipped = programsSkipped,
                 intervalProgramsAdded = intervalProgramsAdded,
-                intervalProgramsSkipped = intervalProgramsSkipped
+                intervalProgramsSkipped = intervalProgramsSkipped,
+                importedProgramIds = importedProgramIds,
+                importedIntervalProgramIds = importedIntervalProgramIds
             )
 
             withContext(Dispatchers.Main) {
@@ -2726,6 +2736,247 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                 )
             }
             CommunityShareImportReport(errors = listOf(e.message ?: "Import failed"))
+        }
+    }
+
+
+    /**
+     * Get all data as JSON for AI context
+     */
+
+    suspend fun getAllDataAsBackupDataSync(): BackupData = withContext(Dispatchers.IO) {
+        val groupsList = groupDao.getAllGroupsSync()
+        val exercisesList = exerciseDao.getAllExercisesSync()
+        val recordsList = recordDao.getAllRecordsSync()
+        val programsList = programDao.getAllProgramsSync()
+        val programExercisesList = programExerciseDao.getAllProgramExercisesSync()
+        val programLoopsList = programLoopDao.getAllProgramLoopsSync()
+        val intervalProgramsList = intervalProgramDao.getAllIntervalProgramsSync()
+        val intervalExercisesList = intervalProgramExerciseDao.getAllIntervalProgramExercisesSync()
+        val intervalRecordsList = intervalRecordDao.getAllIntervalRecordsSync()
+        val todoTasksList = todoTaskDao.getAllTodoTasksSync()
+
+        BackupData(
+            version = 22,
+            exportDate = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+            app = "Calisthenics Memory",
+            groups = groupsList.map { ExportGroup(it.id, it.name, it.displayOrder) },
+            exercises = exercisesList.map {
+                ExportExercise(it.id, it.name, it.type, it.group, it.sortOrder, it.displayOrder,
+                    it.laterality, it.targetSets, it.targetValue, it.isFavorite, it.restInterval,
+                    it.repDuration, it.distanceTrackingEnabled, it.weightTrackingEnabled,
+                    it.assistanceTrackingEnabled, it.description)
+            },
+            records = recordsList.map {
+                ExportRecord(it.id, it.exerciseId, it.valueRight, it.valueLeft, it.setNumber,
+                    it.date, it.time, it.comment, it.distanceCm, it.weightG, it.assistanceG, it.rpe)
+            },
+            programs = programsList.map { ExportProgram(it.id, it.name) },
+            programExercises = programExercisesList.map {
+                ExportProgramExercise(it.id, it.programId, it.exerciseId, it.sortOrder, it.sets,
+                    it.targetValue, it.intervalSeconds, it.loopId)
+            },
+            programLoops = programLoopsList.map { ExportProgramLoop(it.id, it.programId, it.sortOrder, it.rounds, it.restBetweenRounds) },
+            intervalPrograms = intervalProgramsList.map {
+                ExportIntervalProgram(it.id, it.name, it.workSeconds, it.restSeconds, it.rounds, it.roundRestSeconds)
+            },
+            intervalProgramExercises = intervalExercisesList.map { ExportIntervalProgramExercise(it.id, it.programId, it.exerciseId, it.sortOrder) },
+            intervalRecords = intervalRecordsList.map {
+                ExportIntervalRecord(it.id, it.programName, it.date, it.time, it.workSeconds, it.restSeconds, it.rounds, it.roundRestSeconds, it.completedRounds, it.completedExercisesInLastRound, it.exercisesJson, it.comment)
+            },
+            todoTasks = todoTasksList.map { ExportTodoTask(it.id, it.type, it.referenceId, it.sortOrder, it.repeatDays, it.lastCompletedDate) }
+        )
+    }
+
+suspend fun getAllDataAsJson(): String {
+        return withContext(Dispatchers.IO) {
+            val groupsList = groupDao.getAllGroupsSync()
+            val exercisesList = exerciseDao.getAllExercisesSync()
+            val recordsList = recordDao.getAllRecordsSync()
+            val programsList = programDao.getAllProgramsSync()
+            val programExercisesList = programExerciseDao.getAllProgramExercisesSync()
+            val programLoopsList = programLoopDao.getAllProgramLoopsSync()
+            val intervalProgramsList = intervalProgramDao.getAllIntervalProgramsSync()
+            val intervalExercisesList = intervalProgramExerciseDao.getAllIntervalProgramExercisesSync()
+            val intervalRecordsList = intervalRecordDao.getAllIntervalRecordsSync()
+            val todoTasksList = todoTaskDao.getAllTodoTasksSync()
+
+            val backupData = BackupData(
+                version = 22,
+                exportDate = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                app = "Calisthenics Memory",
+                groups = groupsList.map { ExportGroup(it.id, it.name, it.displayOrder) },
+                exercises = exercisesList.map {
+                    ExportExercise(it.id, it.name, it.type, it.group, it.sortOrder, it.displayOrder,
+                        it.laterality, it.targetSets, it.targetValue, it.isFavorite, it.restInterval,
+                        it.repDuration, it.distanceTrackingEnabled, it.weightTrackingEnabled,
+                        it.assistanceTrackingEnabled, it.description)
+                },
+                records = recordsList.map {
+                    ExportRecord(it.id, it.exerciseId, it.valueRight, it.valueLeft, it.setNumber,
+                        it.date, it.time, it.comment, it.distanceCm, it.weightG, it.assistanceG, it.rpe)
+                },
+                programs = programsList.map { ExportProgram(it.id, it.name) },
+                programExercises = programExercisesList.map {
+                    ExportProgramExercise(it.id, it.programId, it.exerciseId, it.sortOrder, it.sets,
+                        it.targetValue, it.intervalSeconds, it.loopId)
+                },
+                programLoops = programLoopsList.map { ExportProgramLoop(it.id, it.programId, it.sortOrder, it.rounds, it.restBetweenRounds) },
+                intervalPrograms = intervalProgramsList.map {
+                    ExportIntervalProgram(it.id, it.name, it.workSeconds, it.restSeconds, it.rounds, it.roundRestSeconds)
+                },
+                intervalProgramExercises = intervalExercisesList.map { ExportIntervalProgramExercise(it.id, it.programId, it.exerciseId, it.sortOrder) },
+                intervalRecords = intervalRecordsList.map {
+                    ExportIntervalRecord(it.id, it.programName, it.date, it.time, it.workSeconds, it.restSeconds, it.rounds, it.roundRestSeconds, it.completedRounds, it.completedExercisesInLastRound, it.exercisesJson, it.comment)
+                },
+                todoTasks = todoTasksList.map { ExportTodoTask(it.id, it.type, it.referenceId, it.sortOrder, it.repeatDays, it.lastCompletedDate) }
+            )
+
+            Json.encodeToString(backupData)
+        }
+    }
+
+    suspend fun applyAutoUpdate(backupData: BackupData) = withContext(Dispatchers.IO) {
+        database.withTransaction {
+            // 1. Delete all existing workout-related data
+            groupDao.deleteAll()
+            exerciseDao.deleteAll()
+            recordDao.deleteAll()
+            programDao.deleteAll()
+            intervalProgramDao.deleteAll()
+            intervalRecordDao.deleteAll()
+            todoTaskDao.deleteAll()
+
+            // 2. Import groups
+            backupData.groups.forEach { exportGroup ->
+                groupDao.insertGroup(ExerciseGroup(
+                    id = exportGroup.id,
+                    name = exportGroup.name,
+                    displayOrder = exportGroup.displayOrder
+                ))
+            }
+
+            // 3. Import exercises
+            backupData.exercises.forEach { exportExercise ->
+                exerciseDao.insertExercise(Exercise(
+                    id = exportExercise.id,
+                    name = exportExercise.name,
+                    type = exportExercise.type,
+                    group = exportExercise.group,
+                    sortOrder = exportExercise.sortOrder,
+                    displayOrder = exportExercise.displayOrder,
+                    laterality = exportExercise.laterality,
+                    targetSets = exportExercise.targetSets,
+                    targetValue = exportExercise.targetValue,
+                    isFavorite = exportExercise.isFavorite,
+                    restInterval = exportExercise.restInterval,
+                    repDuration = exportExercise.repDuration,
+                    distanceTrackingEnabled = exportExercise.distanceTrackingEnabled,
+                    weightTrackingEnabled = exportExercise.weightTrackingEnabled,
+                    assistanceTrackingEnabled = exportExercise.assistanceTrackingEnabled,
+                    description = exportExercise.description
+                ))
+            }
+
+            // 4. Import records
+            backupData.records.forEach { exportRecord ->
+                recordDao.insertRecord(TrainingRecord(
+                    id = exportRecord.id,
+                    exerciseId = exportRecord.exerciseId,
+                    valueRight = exportRecord.valueRight,
+                    valueLeft = exportRecord.valueLeft,
+                    setNumber = exportRecord.setNumber,
+                    date = exportRecord.date,
+                    time = exportRecord.time,
+                    comment = exportRecord.comment,
+                    distanceCm = exportRecord.distanceCm,
+                    weightG = exportRecord.weightG,
+                    assistanceG = exportRecord.assistanceG,
+                    rpe = exportRecord.rpe
+                ))
+            }
+
+            // 5. Import programs
+            backupData.programs.forEach { exportProgram ->
+                programDao.insert(Program(id = exportProgram.id, name = exportProgram.name))
+            }
+
+            // 6. Import program loops
+            backupData.programLoops.forEach { exportLoop ->
+                programLoopDao.insert(ProgramLoop(
+                    id = exportLoop.id,
+                    programId = exportLoop.programId,
+                    sortOrder = exportLoop.sortOrder,
+                    rounds = exportLoop.rounds,
+                    restBetweenRounds = exportLoop.restBetweenRounds
+                ))
+            }
+
+            // 7. Import program exercises
+            backupData.programExercises.forEach { exportPe ->
+                programExerciseDao.insert(ProgramExercise(
+                    id = exportPe.id,
+                    programId = exportPe.programId,
+                    exerciseId = exportPe.exerciseId,
+                    sortOrder = exportPe.sortOrder,
+                    sets = exportPe.sets,
+                    targetValue = exportPe.targetValue,
+                    intervalSeconds = exportPe.intervalSeconds,
+                    loopId = exportPe.loopId
+                ))
+            }
+
+            // 8. Import interval programs
+            backupData.intervalPrograms.forEach { exportIp ->
+                intervalProgramDao.insert(IntervalProgram(
+                    id = exportIp.id,
+                    name = exportIp.name,
+                    workSeconds = exportIp.workSeconds,
+                    restSeconds = exportIp.restSeconds,
+                    rounds = exportIp.rounds,
+                    roundRestSeconds = exportIp.roundRestSeconds
+                ))
+            }
+
+            // 9. Import interval exercises
+            backupData.intervalProgramExercises.forEach { exportIpe ->
+                intervalProgramExerciseDao.insert(IntervalProgramExercise(
+                    id = exportIpe.id,
+                    programId = exportIpe.programId,
+                    exerciseId = exportIpe.exerciseId,
+                    sortOrder = exportIpe.sortOrder
+                ))
+            }
+
+            // 10. Import interval records
+            backupData.intervalRecords.forEach { exportIr ->
+                intervalRecordDao.insert(IntervalRecord(
+                    id = exportIr.id,
+                    programName = exportIr.programName,
+                    date = exportIr.date,
+                    time = exportIr.time,
+                    workSeconds = exportIr.workSeconds,
+                    restSeconds = exportIr.restSeconds,
+                    rounds = exportIr.rounds,
+                    roundRestSeconds = exportIr.roundRestSeconds,
+                    completedRounds = exportIr.completedRounds,
+                    completedExercisesInLastRound = exportIr.completedExercisesInLastRound,
+                    exercisesJson = exportIr.exercisesJson,
+                    comment = exportIr.comment
+                ))
+            }
+
+            // 11. Import todo tasks
+            backupData.todoTasks.forEach { exportTodo ->
+                todoTaskDao.insert(TodoTask(
+                    id = exportTodo.id,
+                    type = exportTodo.type,
+                    referenceId = exportTodo.referenceId,
+                    sortOrder = exportTodo.sortOrder,
+                    repeatDays = exportTodo.repeatDays,
+                    lastCompletedDate = exportTodo.lastCompletedDate
+                ))
+            }
         }
     }
 

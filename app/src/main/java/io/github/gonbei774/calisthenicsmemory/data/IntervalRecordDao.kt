@@ -8,6 +8,8 @@ interface IntervalRecordDao {
 
     @Query("SELECT * FROM interval_records ORDER BY date DESC, time DESC")
     fun getAllRecords(): Flow<List<IntervalRecord>>
+    @Query("SELECT * FROM interval_records")
+    suspend fun getAllIntervalRecordsSync(): List<IntervalRecord>
 
     @Query("SELECT * FROM interval_records WHERE id = :id")
     suspend fun getRecordById(id: Long): IntervalRecord?

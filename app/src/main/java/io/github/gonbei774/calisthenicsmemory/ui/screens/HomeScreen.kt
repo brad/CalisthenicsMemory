@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -33,6 +34,7 @@ import io.github.gonbei774.calisthenicsmemory.R
 import io.github.gonbei774.calisthenicsmemory.Screen
 import io.github.gonbei774.calisthenicsmemory.data.Exercise
 import io.github.gonbei774.calisthenicsmemory.data.TrainingRecord
+import io.github.gonbei774.calisthenicsmemory.data.WorkoutPreferences
 import io.github.gonbei774.calisthenicsmemory.ui.UiMessage
 import io.github.gonbei774.calisthenicsmemory.ui.theme.*
 import io.github.gonbei774.calisthenicsmemory.viewmodel.TrainingViewModel
@@ -46,16 +48,22 @@ fun HomeScreen(
     val appColors = LocalAppColors.current
     val exercises by viewModel.exercises.collectAsState()
     val records by viewModel.records.collectAsState()
+    val context = LocalContext.current
+    val workoutPrefs = remember { WorkoutPreferences(context) }
+    val apiKey = remember { workoutPrefs.getGeminiApiKey() }
 
     // Filter today's records
     val todayDate = LocalDate.now().toString()
     val todayRecords = remember(records, todayDate) {
         records.filter { it.date == todayDate }
     }
+    val scrollState = rememberScrollState()
+
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(scrollState)
                 .padding(16.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
@@ -70,6 +78,17 @@ fun HomeScreen(
             )
 
             Spacer(modifier = Modifier.height(64.dp))
+
+            // AI Coach Button (only if API key is set)
+            if (apiKey.isNotBlank()) {
+                MainButton(
+                    text = stringResource(R.string.ai_coach_talk),
+                    color = Purple600.copy(alpha = 0.8f),
+                    onClick = { onNavigate(Screen.AiCoach()) }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             // To Do Button
             MainButton(
@@ -113,6 +132,9 @@ fun HomeScreen(
                 exercises = exercises,
                 onNavigateToView = { onNavigate(Screen.View) }
             )
+
+            // Padding for settings icon
+            Spacer(modifier = Modifier.height(64.dp))
         }
 
         // Settings Icon Button (bottom-right)
@@ -222,18 +244,6 @@ fun TodayDashboardCard(
     }
 }
 
-/**
- * Format training records for clipboard copy
- *
- * Example: "Push-up: 12/11/10, Bridge: 20/20/20/30, Plank: 35s/32s/30s"
- *
- * Rules:
- * - Group by exercise
- * - Within each exercise, sort by time + set number
- * - Merge multiple sessions into one
- * - Unilateral: R6 L5/R5 L4 (セット間をスラッシュ)
- * - Isometric: 35s/32s/30s
- */
 fun formatRecordsForClipboard(
     records: List<TrainingRecord>,
     exercises: List<Exercise>
@@ -242,7 +252,6 @@ fun formatRecordsForClipboard(
 
     val exerciseMap = exercises.associateBy { it.id }
 
-    // Group by exercise and sort by time + set number
     val recordsByExercise = records
         .groupBy { it.exerciseId }
         .mapValues { (_, recs) ->
@@ -254,7 +263,6 @@ fun formatRecordsForClipboard(
         val exerciseName = exercise.name
 
         val valuesText = when {
-            // Unilateral exercise - format: R6 L5/R5 L4
             exercise.laterality == "Unilateral" -> {
                 val pairs = sortedRecords.map { record ->
                     "R${record.valueRight}" + (record.valueLeft?.let { " L$it" } ?: "")
@@ -262,13 +270,11 @@ fun formatRecordsForClipboard(
                 pairs.joinToString("/")
             }
 
-            // Isometric exercise - format: 35s/32s/30s
             exercise.type == "Isometric" -> {
                 val values = sortedRecords.map { "${it.valueRight}s" }
                 values.joinToString("/")
             }
 
-            // Dynamic Bilateral exercise - format: 12/11/10
             else -> {
                 val values = sortedRecords.map { it.valueRight.toString() }
                 values.joinToString("/")
@@ -279,14 +285,6 @@ fun formatRecordsForClipboard(
     }
 }
 
-/**
- * Format training records for display with color coding
- * Display format: "Exercise name X sets" (one per line)
- *
- * Colors:
- * - Exercise name: textPrimary (adapts to theme)
- * - Set count: Green400
- */
 fun formatRecordsForDisplay(
     records: List<TrainingRecord>,
     exercises: List<Exercise>,
@@ -296,7 +294,6 @@ fun formatRecordsForDisplay(
 
     val exerciseMap = exercises.associateBy { it.id }
 
-    // Group by exercise and count sets
     val recordsByExercise = records
         .groupBy { it.exerciseId }
         .mapValues { (_, recs) -> recs.size }
@@ -305,19 +302,16 @@ fun formatRecordsForDisplay(
         recordsByExercise.entries.forEachIndexed { index, (exerciseId, setCount) ->
             val exercise = exerciseMap[exerciseId] ?: return@forEachIndexed
 
-            // Exercise name in textPrimary
             withStyle(SpanStyle(color = textPrimaryColor)) {
                 append(exercise.name)
                 append(" ")
             }
 
-            // Set count in Green400
             withStyle(SpanStyle(color = Green400)) {
                 val setsText = if (setCount == 1) "set" else "sets"
                 append("$setCount $setsText")
             }
 
-            // Add newline between exercises
             if (index < recordsByExercise.size - 1) {
                 append("\n")
             }
@@ -366,4 +360,3 @@ fun MainButton(
         }
     }
 }
-

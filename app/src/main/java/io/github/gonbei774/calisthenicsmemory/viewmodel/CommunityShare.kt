@@ -87,6 +87,18 @@ data class ShareIntervalProgramExercise(
     val sortOrder: Int
 )
 
+@Serializable
+data class MemoryUpdate(
+    val type: String,
+    val newMemory: String
+)
+
+@Serializable
+data class AutoUpdate(
+    val type: String,
+    val updatedContext: BackupData
+)
+
 // ===== インポートレポート =====
 
 data class CommunityShareImportReport(
@@ -98,6 +110,8 @@ data class CommunityShareImportReport(
     val programsSkipped: Int = 0,
     val intervalProgramsAdded: Int = 0,
     val intervalProgramsSkipped: Int = 0,
+    val importedProgramIds: List<Long> = emptyList(),
+    val importedIntervalProgramIds: List<Long> = emptyList(),
     val errors: List<String> = emptyList()
 )
 
@@ -270,4 +284,65 @@ fun validateCommunityShareContent(data: CommunityShareData): List<String> {
     }
 
     return errors
+}
+
+fun extractWorkoutJson(text: String): String? {
+    val regex = Regex("""\{[\s\n]*"formatVersion"[\s\n]*:""")
+    val match = regex.find(text) ?: return null
+    val startIndex = match.range.first
+
+    var braceCount = 0
+    var endIndex = -1
+    for (i in startIndex until text.length) {
+        if (text[i] == '{') braceCount++
+        else if (text[i] == '}') braceCount--
+
+        if (braceCount == 0) {
+            endIndex = i + 1
+            break
+        }
+    }
+    return if (endIndex != -1) text.substring(startIndex, endIndex) else null
+}
+
+fun extractMemoryUpdate(text: String): String? {
+    val regex = Regex("""\{[\s\n]*"type"[\s\n]*:[\s\n]*"memory_update"""")
+    val match = regex.find(text) ?: return null
+    val startIndex = match.range.first
+
+    var braceCount = 0
+    var endIndex = -1
+    for (i in startIndex until text.length) {
+        if (text[i] == '{') braceCount++
+        else if (text[i] == '}') braceCount--
+
+        if (braceCount == 0) {
+            endIndex = i + 1
+            break
+        }
+    }
+    return if (endIndex != -1) text.substring(startIndex, endIndex) else null
+}
+
+
+fun extractAutoUpdate(text: String): String? {
+    val regex = Regex("""\{[\s
+]*"type"[\s
+]*:[\s
+]*"auto_update"""")
+    val match = regex.find(text) ?: return null
+    val startIndex = match.range.first
+
+    var braceCount = 0
+    var endIndex = -1
+    for (i in startIndex until text.length) {
+        if (text[i] == '{') braceCount++
+        else if (text[i] == '}') braceCount--
+
+        if (braceCount == 0) {
+            endIndex = i + 1
+            break
+        }
+    }
+    return if (endIndex != -1) text.substring(startIndex, endIndex) else null
 }

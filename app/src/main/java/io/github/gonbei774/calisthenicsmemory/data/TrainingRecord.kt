@@ -20,14 +20,15 @@ import androidx.room.Index
 data class TrainingRecord(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val exerciseId: Long,          // 種目ID
-    val valueRight: Int,           // ← リネーム: value → valueRight（右側 or 両側の値）
-    val valueLeft: Int? = null,    // ← 追加: 左側の値（Unilateral種目用、nullはBilateral）
-    val setNumber: Int,            // セット番号
-    val date: String,              // 日付 (YYYY-MM-DD)
-    val time: String,              // 時刻 (HH:mm)
-    val comment: String = "",      // コメント
-    val distanceCm: Int? = null,   // 距離（cm、任意）
-    val weightG: Int? = null,      // 追加ウエイト（g、任意）
-    val assistanceG: Int? = null   // アシスト量（g、任意）
+    val exerciseId: Long,
+    val valueRight: Int,
+    val valueLeft: Int? = null,
+    val setNumber: Int,
+    val date: String,
+    val time: String,
+    val comment: String = "",
+    val distanceCm: Int? = null,
+    val weightG: Int? = null,
+    val assistanceG: Int? = null,
+    val rpe: Int? = null // Rate of Perceived Exertion (1-10) for AI analysis
 )

@@ -8,6 +8,8 @@ interface TodoTaskDao {
 
     @Query("SELECT * FROM todo_tasks ORDER BY sortOrder ASC")
     fun getAllTasks(): Flow<List<TodoTask>>
+    @Query("SELECT * FROM todo_tasks")
+    suspend fun getAllTodoTasksSync(): List<TodoTask>
 
     @Insert
     suspend fun insert(task: TodoTask): Long
@@ -45,4 +47,7 @@ interface TodoTaskDao {
 
     @Query("SELECT * FROM todo_tasks WHERE type = :type AND referenceId = :referenceId LIMIT 1")
     suspend fun getTaskByReference(type: String, referenceId: Long): TodoTask?
+
+    @Query("DELETE FROM todo_tasks")
+    suspend fun deleteAll()
 }

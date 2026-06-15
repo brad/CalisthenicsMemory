@@ -8,6 +8,8 @@ interface ProgramDao {
 
     @Query("SELECT * FROM programs ORDER BY id DESC")
     fun getAllPrograms(): Flow<List<Program>>
+    @Query("SELECT * FROM programs")
+    suspend fun getAllProgramsSync(): List<Program>
 
     @Query("SELECT * FROM programs WHERE id = :id")
     suspend fun getProgramById(id: Long): Program?
@@ -26,4 +28,7 @@ interface ProgramDao {
 
     @Query("SELECT * FROM programs WHERE name = :name LIMIT 1")
     suspend fun getProgramByName(name: String): Program?
+
+    @Query("DELETE FROM programs")
+    suspend fun deleteAll()
 }

@@ -8,6 +8,8 @@ interface TrainingRecordDao {
 
     @Query("SELECT * FROM training_records ORDER BY date DESC, time DESC, setNumber ASC")
     fun getAllRecords(): Flow<List<TrainingRecord>>
+    @Query("SELECT * FROM training_records")
+    suspend fun getAllRecordsSync(): List<TrainingRecord>
 
     @Query("SELECT * FROM training_records WHERE exerciseId = :exerciseId ORDER BY date DESC, time DESC")
     fun getRecordsByExercise(exerciseId: Long): Flow<List<TrainingRecord>>

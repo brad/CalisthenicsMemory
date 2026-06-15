@@ -1,0 +1,61 @@
+<<<<<<< SEARCH
+import androidx.compose.material.icons.filled.Face
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalMaterial3Api::class)
+=======
+import androidx.compose.material.icons.filled.Face
+import dev.jeziellago.compose.markdowntext.MarkdownText
+import kotlinx.coroutines.launch
+import androidx.compose.ui.text.TextStyle
+
+@OptIn(ExperimentalMaterial3Api::class)
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+            Surface(
+                color = backgroundColor,
+                shape = RoundedCornerShape(
+                    topStart = 16.dp,
+                    topEnd = 16.dp,
+                    bottomStart = if (message.isUser) 16.dp else 0.dp,
+                    bottomEnd = if (message.isUser) 0.dp else 16.dp
+                ),
+                tonalElevation = 1.dp
+            ) {
+                Text(
+                    text = displayText,
+                    color = textColor,
+                    modifier = Modifier.padding(12.dp),
+                    fontSize = 16.sp
+                )
+            }
+=======
+            Surface(
+                color = backgroundColor,
+                shape = RoundedCornerShape(
+                    topStart = 16.dp,
+                    topEnd = 16.dp,
+                    bottomStart = if (message.isUser) 16.dp else 0.dp,
+                    bottomEnd = if (message.isUser) 0.dp else 16.dp
+                ),
+                tonalElevation = 1.dp
+            ) {
+                if (message.isUser) {
+                    Text(
+                        text = displayText,
+                        color = textColor,
+                        modifier = Modifier.padding(12.dp),
+                        fontSize = 16.sp
+                    )
+                } else {
+                    MarkdownText(
+                        markdown = displayText,
+                        modifier = Modifier.padding(12.dp),
+                        style = TextStyle(
+                            color = textColor,
+                            fontSize = 16.sp
+                        )
+                    )
+                }
+            }
+>>>>>>> REPLACE

@@ -14,10 +14,13 @@ import io.github.gonbei774.calisthenicsmemory.data.TodoTask
 import io.github.gonbei774.calisthenicsmemory.data.AppTheme
 import io.github.gonbei774.calisthenicsmemory.data.LanguagePreferences
 import io.github.gonbei774.calisthenicsmemory.data.ThemePreferences
+import io.github.gonbei774.calisthenicsmemory.ui.screens.*
+import io.github.gonbei774.calisthenicsmemory.viewmodel.AiViewModel
 import java.util.Locale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -80,6 +83,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         systemDarkMode.value =
             (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
@@ -110,7 +114,7 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Context の言語設定を更新する（全Androidバージョン対応）
+     * Update Context language settings (all Android versions)
      */
     private fun updateBaseContextLocale(context: Context): Context {
         val languagePrefs = LanguagePreferences(context)
@@ -118,7 +122,7 @@ class MainActivity : ComponentActivity() {
 
         android.util.Log.d("MainActivity", "Selected language: ${selectedLanguage.code}")
 
-        // システム設定に従う場合は何もしない
+        // Do nothing if following system settings
         if (selectedLanguage == AppLanguage.SYSTEM) {
             android.util.Log.d("MainActivity", "Using system language")
             return context
@@ -147,8 +151,8 @@ class MainActivity : ComponentActivity() {
 }
 
 /**
- * UiMessageを現在の言語の文字列に変換
- * UI層で文字列リソースを取得することで、言語変更に即座に対応
+ * Convert UiMessage to current language string
+ * Get string resources in UI layer to respond to language changes immediately
  */
 @Composable
 fun UiMessage.toMessageString(): String {
@@ -205,6 +209,12 @@ fun CalisthenicsMemoryApp(
     onThemeChange: (AppTheme) -> Unit = {}
 ) {
     val viewModel: TrainingViewModel = viewModel()
+    val context = androidx.compose.ui.platform.LocalContext.current.applicationContext as android.app.Application
+    val aiViewModel: AiViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+            return AiViewModel(context) as T
+        }
+    })
     var currentScreen by rememberSaveable(stateSaver = ScreenSaver) { mutableStateOf<Screen>(Screen.Home) }
     val snackbarHostState = remember { SnackbarHostState() }
     val appColors = LocalAppColors.current
@@ -212,7 +222,7 @@ fun CalisthenicsMemoryApp(
     // Snackbar message handling
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
 
-    // UiMessageを文字列に変換（Composable関数内で実行）
+    // Convert UiMessage to string (execute in Composable function)
     val messageString = snackbarMessage?.toMessageString()
 
     LaunchedEffect(snackbarMessage) {
@@ -226,6 +236,7 @@ fun CalisthenicsMemoryApp(
     }
 
     Scaffold(
+        modifier = Modifier.fillMaxSize().systemBarsPadding(),
         snackbarHost = {
             SnackbarHost(
                 hostState = snackbarHostState,
@@ -341,9 +352,8 @@ fun CalisthenicsMemoryApp(
                         onNavigateToExecute = { programId ->
                             currentScreen = Screen.ProgramExecution(programId)
                         },
-                        onNavigateToResume = { programId ->
-                            currentScreen = Screen.ProgramExecution(programId, resumeSavedState = true)
-                        }
+                        onNavigateToResume = { programId -> currentScreen = Screen.ProgramExecution(programId, resumeSavedState = true) },
+                        onNavigateToAiCoach = { currentScreen = Screen.AiCoach("Analyze my To Do list and suggest any improvements or specific goals for today.") }
                     )
                 }
                 is Screen.ProgramEdit -> {
@@ -439,6 +449,20 @@ fun CalisthenicsMemoryApp(
                         onNavigateToCommunityShareExport = { currentScreen = Screen.CommunityShareExport }
                     )
                 }
+                is Screen.AiCoach -> {
+
+                    BackHandler { currentScreen = Screen.Home }
+                    AiCoachScreen(
+                        initialPrompt = (currentScreen as Screen.AiCoach).initialPrompt,
+                        viewModel = aiViewModel,
+                        trainingViewModel = viewModel,
+                        onNavigateBack = { currentScreen = Screen.Home },
+                        onNavigateToProgramEdit = { id -> currentScreen = Screen.ProgramEdit(id) },
+                        onNavigateToProgramExecution = { id -> currentScreen = Screen.ProgramExecution(id) },
+                        onNavigateToIntervalEdit = { id -> currentScreen = Screen.IntervalEdit(id) },
+                        onNavigateToIntervalExecution = { id -> currentScreen = Screen.IntervalExecution(id) }
+                    )
+                }
             }
         }
     }
@@ -463,6 +487,7 @@ sealed class Screen {
     object Backup : Screen()
     object CsvDataManagement : Screen()
     object ShareHub : Screen()
+    data class AiCoach(val initialPrompt: String? = null) : Screen()
 }
 
 private val ScreenSaver = mapSaver(
@@ -510,6 +535,11 @@ private val ScreenSaver = mapSaver(
                 Screen.Backup -> put("type", "Backup")
                 Screen.CsvDataManagement -> put("type", "CsvDataManagement")
                 Screen.ShareHub -> put("type", "ShareHub")
+                is Screen.AiCoach -> {
+
+                    put("type", "AiCoach")
+                    put("initialPrompt", screen.initialPrompt ?: "")
+                }
             }
         }
     },
@@ -549,6 +579,7 @@ private val ScreenSaver = mapSaver(
             "Backup" -> Screen.Backup
             "CsvDataManagement" -> Screen.CsvDataManagement
             "ShareHub" -> Screen.ShareHub
+            "AiCoach" -> Screen.AiCoach(initialPrompt = (map["initialPrompt"] as? String)?.takeIf { it.isNotBlank() })
             else -> Screen.Home
         }
     }
