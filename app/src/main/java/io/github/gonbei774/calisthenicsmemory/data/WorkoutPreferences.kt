@@ -231,6 +231,9 @@ class WorkoutPreferences(context: Context) {
         prefs.edit().putString(KEY_AI_MEMORY, memory).apply()
     }
 
+    fun isHealthConnectEnabled(): Boolean = prefs.getBoolean(KEY_HEALTH_CONNECT_ENABLED, false)
+    fun setHealthConnectEnabled(enabled: Boolean) = prefs.edit().putBoolean(KEY_HEALTH_CONNECT_ENABLED, enabled).apply()
+
     companion object {
         private const val PREFS_NAME = "workout_preferences"
         private const val KEY_START_COUNTDOWN = "start_countdown"
@@ -247,6 +250,7 @@ class WorkoutPreferences(context: Context) {
         private const val KEY_GEMINI_API_KEY = "gemini_api_key"
         private const val KEY_GEMINI_MODEL = "gemini_model"
         private const val KEY_AI_MEMORY = "ai_memory"
+        private const val KEY_HEALTH_CONNECT_ENABLED = "health_connect_enabled"
 
         const val DEFAULT_START_COUNTDOWN = 5
         const val DEFAULT_SET_INTERVAL = 240

@@ -130,6 +130,7 @@ dependencies {
     // Generative AI
     implementation(libs.generativeai)
     implementation(libs.compose.markdown)
+    implementation(libs.androidx.health.connect)
 
     // Testing
     testImplementation("junit:junit:4.13.2")

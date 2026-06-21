@@ -1,5 +1,11 @@
 package io.github.gonbei774.calisthenicsmemory.viewmodel
 
+
+import io.github.gonbei774.calisthenicsmemory.data.WorkoutPreferences
+import io.github.gonbei774.calisthenicsmemory.service.HealthConnectManager
+import java.time.ZonedDateTime
+import java.time.ZoneId
+
 import android.app.Application
 import androidx.room.withTransaction
 import androidx.lifecycle.AndroidViewModel
@@ -171,6 +177,15 @@ data class ExportTodoTask(
 )
 
 class TrainingViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val workoutPreferences = WorkoutPreferences(application)
+    private val healthConnectManager = HealthConnectManager(application)
+    private var workoutStartTime: ZonedDateTime? = null
+
+    fun startWorkout() {
+        workoutStartTime = ZonedDateTime.now()
+    }
+
 
     private val database = AppDatabase.getDatabase(application)
     private val exerciseDao = database.exerciseDao()
@@ -373,6 +388,8 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     )
                 }
                 recordDao.insertRecords(records)
+                val exercise = exercises.value.find { it.id == exerciseId }
+                syncToHealthConnect(exercise?.name ?: "Workout", comment)
                 if (emitMessage) {
                     _snackbarMessage.value = UiMessage.SetsRecorded(values.size)
                 }
@@ -413,6 +430,8 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
                     )
                 }
                 recordDao.insertRecords(records)
+                val exercise = exercises.value.find { it.id == exerciseId }
+                syncToHealthConnect(exercise?.name ?: "Workout", comment)
                 if (emitMessage) {
                     _snackbarMessage.value = UiMessage.SetsRecorded(valuesRight.size)
                 }
@@ -423,6 +442,26 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
     }
 
     /** Notification for program mode save completion (shows total sets once) */
+
+    private fun syncToHealthConnect(exerciseName: String, comment: String) {
+        viewModelScope.launch {
+            if (workoutPreferences.isHealthConnectEnabled() && healthConnectManager.isHealthConnectAvailable()) {
+                val endTime = ZonedDateTime.now()
+                val startTime = workoutStartTime ?: endTime.minusMinutes(10)
+                healthConnectManager.writeWorkoutSession(
+                    startTime = startTime,
+                    endTime = endTime,
+                    exerciseName = exerciseName,
+                    notes = comment
+                )
+            }
+        }
+    }
+
+    fun syncProgramToHealthConnect(programName: String, comment: String) {
+        syncToHealthConnect(programName, comment)
+    }
+
     fun notifyProgramSetsRecorded(totalSets: Int) {
         _snackbarMessage.value = UiMessage.ProgramSetsRecorded(totalSets)
     }
@@ -2257,15 +2296,17 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
             initialValue = emptyList()
         )
 
+
     suspend fun saveIntervalRecord(record: IntervalRecord): Long? {
         return try {
-            intervalRecordDao.insert(record)
+            val id = intervalRecordDao.insert(record)
+            syncToHealthConnect(record.programName, record.comment ?: "")
+            id
         } catch (e: Exception) {
             _snackbarMessage.value = UiMessage.ErrorOccurred
             null
         }
     }
-
     suspend fun updateIntervalRecord(record: IntervalRecord) {
         try {
             intervalRecordDao.update(record)
