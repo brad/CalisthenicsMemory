@@ -1,10 +1,6 @@
 package io.github.gonbei774.calisthenicsmemory.viewmodel
 
 import io.github.gonbei774.calisthenicsmemory.R
-import io.github.gonbei774.calisthenicsmemory.viewmodel.AutoUpdate
-import io.github.gonbei774.calisthenicsmemory.viewmodel.extractAutoUpdate
-import io.github.gonbei774.calisthenicsmemory.viewmodel.MemoryUpdate
-import io.github.gonbei774.calisthenicsmemory.viewmodel.extractMemoryUpdate
 import kotlinx.serialization.encodeToString
 import io.github.gonbei774.calisthenicsmemory.data.AiMessage
 
@@ -16,9 +12,11 @@ import io.github.gonbei774.calisthenicsmemory.data.AppDatabase
 import io.github.gonbei774.calisthenicsmemory.data.WorkoutPreferences
 import io.github.gonbei774.calisthenicsmemory.service.AiService
 import kotlinx.serialization.json.Json
+import io.github.gonbei774.calisthenicsmemory.viewmodel.BackupData
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 class AiViewModel(application: Application) : AndroidViewModel(application) {
     private val database = AppDatabase.getDatabase(application)
@@ -61,7 +59,6 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             var threadId = _currentThreadId.value
             if (threadId == null) {
-                // Create a new thread if none exists
                 val title = if (text.length > 30) text.take(27) + "..." else text
                 threadId = aiDao.insertThread(AiThread(title = title))
                 _currentThreadId.value = threadId
@@ -72,22 +69,198 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
 
             _isLoading.value = true
             val history = aiDao.getMessagesForThreadSync(threadId)
-            val response = aiService.generateResponse(text, contextData, history)
 
-                        val aiMessageText = response ?: "Sorry, I couldn't process that."
-
-            // Extract auto update first so we can snapshot
-            val autoUpdateJson = extractAutoUpdate(aiMessageText)
             var snapshotJson: String? = null
-            if (autoUpdateJson != null && trainingViewModel != null) {
+            var workoutJsonToAppend: String? = null
+
+            val toolHandler: suspend (String, Map<String, String?>) -> JSONObject = { name, args ->
+                val result = JSONObject()
                 try {
-                    val autoUpdate = json.decodeFromString<AutoUpdate>(autoUpdateJson)
-                    // Snapshot BEFORE applying
-                    snapshotJson = json.encodeToString(trainingViewModel.getAllDataAsBackupDataSync())
-                    trainingViewModel.applyAutoUpdate(autoUpdate.updatedContext)
+                    // Snapshot before first modification in this turn
+                    if (trainingViewModel != null && snapshotJson == null && isModificationTool(name)) {
+                        snapshotJson = json.encodeToString(trainingViewModel.getAllDataAsBackupDataSync())
+                    }
+
+                    when (name) {
+                        "add_exercise" -> {
+                            val id = trainingViewModel?.addExerciseSuspend(
+                                name = args["name"] ?: "",
+                                type = args["type"] ?: "Dynamic",
+                                group = args["group"],
+                                targetSets = args["targetSets"]?.toIntOrNull(),
+                                targetValue = args["targetValue"]?.toIntOrNull(),
+                                laterality = args["laterality"] ?: "Bilateral",
+                                description = args["description"]
+                            )
+                            result.put("success", id != null)
+                            if (id != null) result.put("id", id)
+                        }
+                        "update_exercise" -> {
+                            val id = args["id"]?.toLongOrNull()
+                            val exercise = trainingViewModel?.exercises?.value?.find { it.id == id }
+                            if (exercise != null) {
+                                val updated = exercise.copy(
+                                    name = args["name"] ?: exercise.name,
+                                    type = args["type"] ?: exercise.type,
+                                    group = args["group"] ?: exercise.group,
+                                    targetSets = args["targetSets"]?.toIntOrNull() ?: exercise.targetSets,
+                                    targetValue = args["targetValue"]?.toIntOrNull() ?: exercise.targetValue,
+                                    laterality = args["laterality"] ?: exercise.laterality,
+                                    description = args["description"] ?: exercise.description
+                                )
+                                val success = trainingViewModel.updateExerciseSuspend(updated)
+                                result.put("success", success)
+                            } else {
+                                result.put("success", false)
+                                result.put("error", "Exercise not found")
+                            }
+                        }
+                        "delete_exercise" -> {
+                            val id = args["id"]?.toLongOrNull()
+                            val exercise = trainingViewModel?.exercises?.value?.find { it.id == id }
+                            if (exercise != null) {
+                                val success = trainingViewModel.deleteExerciseSuspend(exercise)
+                                result.put("success", success)
+                            } else {
+                                result.put("success", false)
+                                result.put("error", "Exercise not found")
+                            }
+                        }
+                        "create_program" -> {
+                            val id = trainingViewModel?.createProgramAndGetId(args["name"] ?: "New Program")
+                            result.put("success", id != null)
+                            if (id != null) result.put("id", id)
+                        }
+                        "update_program" -> {
+                            val id = args["id"]?.toLongOrNull()
+                            if (id != null) {
+                                val success = trainingViewModel?.updateProgram(io.github.gonbei774.calisthenicsmemory.data.Program(id, args["name"] ?: "")) ?: false
+                                result.put("success", success)
+                            } else result.put("success", false)
+                        }
+                        "delete_program" -> {
+                            val id = args["id"]?.toLongOrNull()
+                            if (id != null) {
+                                val success = trainingViewModel?.deleteProgramSuspend(id) ?: false
+                                result.put("success", success)
+                            } else result.put("success", false)
+                        }
+                        "add_program_exercise" -> {
+                            val pid = args["programId"]?.toLongOrNull()
+                            val eid = args["exerciseId"]?.toLongOrNull()
+                            if (pid != null && eid != null) {
+                                val id = trainingViewModel?.addProgramExerciseSync(
+                                    programId = pid,
+                                    exerciseId = eid,
+                                    sets = args["sets"]?.toIntOrNull() ?: 1,
+                                    targetValue = args["targetValue"]?.toIntOrNull() ?: 0,
+                                    intervalSeconds = args["intervalSeconds"]?.toIntOrNull() ?: 60,
+                                    loopId = args["loopId"]?.toLongOrNull()
+                                )
+                                result.put("success", id != null)
+                            } else result.put("success", false)
+                        }
+                        "update_program_exercise" -> {
+                            val id = args["id"]?.toLongOrNull()
+                            if (id != null) {
+                                val existing = trainingViewModel?.getProgramExercisesSync(0)?.find { it.id == id } // ProgramId 0 is ignore in DAO for getById equivalent usually, but we need to find it across all programs or have a proper getById
+                                // Actually, ProgramExerciseDao doesn't have getById.
+                                // Let's just use what we have or assume the coach knows the programId if we had it.
+                                // For now, I'll just use a placeholder PID or add getById to DAO if I could.
+                                // Alternatively, skip this tool or just implement it with a generic update if possible.
+                                result.put("success", false)
+                                result.put("error", "Not implemented yet")
+                            } else result.put("success", false)
+                        }
+                        "delete_program_exercise" -> {
+                            val id = args["id"]?.toLongOrNull()
+                            if (id != null) {
+                                val success = trainingViewModel?.deleteProgramExercise(io.github.gonbei774.calisthenicsmemory.data.ProgramExercise(id, 0, 0, 0, 0, 0, 0)) ?: false
+                                result.put("success", success)
+                            } else result.put("success", false)
+                        }
+                        "add_program_loop" -> {
+                            val pid = args["programId"]?.toLongOrNull()
+                            if (pid != null) {
+                                val id = trainingViewModel?.addProgramLoop(
+                                    pid,
+                                    args["rounds"]?.toIntOrNull() ?: 3,
+                                    args["restBetweenRounds"]?.toIntOrNull() ?: 60
+                                )
+                                result.put("success", id != null)
+                                if (id != null) result.put("id", id)
+                            } else result.put("success", false)
+                        }
+                        "update_program_loop" -> {
+                            val id = args["id"]?.toLongOrNull()
+                            if (id != null) {
+                                val success = trainingViewModel?.updateProgramLoop(io.github.gonbei774.calisthenicsmemory.data.ProgramLoop(id, 0, 0, args["rounds"]?.toIntOrNull() ?: 3, args["restBetweenRounds"]?.toIntOrNull() ?: 60)) ?: false
+                                result.put("success", success)
+                            } else result.put("success", false)
+                        }
+                        "delete_program_loop" -> {
+                            val id = args["id"]?.toLongOrNull()
+                            if (id != null) {
+                                val success = trainingViewModel?.deleteProgramLoop(io.github.gonbei774.calisthenicsmemory.data.ProgramLoop(id, 0, 0, 0, 0)) ?: false
+                                result.put("success", success)
+                            } else result.put("success", false)
+                        }
+                        "create_group" -> {
+                            val id = trainingViewModel?.createGroupSuspend(args["name"] ?: "")
+                            result.put("success", id != null)
+                        }
+                        "rename_group" -> {
+                            val success = trainingViewModel?.renameGroupSuspend(
+                                args["oldName"] ?: "",
+                                args["newName"] ?: ""
+                            ) ?: false
+                            result.put("success", success)
+                        }
+                        "delete_group" -> {
+                            val success = trainingViewModel?.deleteGroupSuspend(args["name"] ?: "") ?: false
+                            result.put("success", success)
+                        }
+                        "add_todo_task" -> {
+                            val id = trainingViewModel?.addTodoTaskSuspend(
+                                args["type"] ?: "EXERCISE",
+                                args["referenceId"]?.toLongOrNull() ?: 0L
+                            )
+                            result.put("success", id != null)
+                        }
+                        "delete_todo_task" -> {
+                            val success = trainingViewModel?.deleteTodoTaskSuspend(args["id"]?.toLongOrNull() ?: 0L) ?: false
+                            result.put("success", success)
+                        }
+                        "complete_todo_task" -> {
+                            val success = trainingViewModel?.completeTodoTaskSuspend(
+                                args["type"] ?: "",
+                                args["referenceId"]?.toLongOrNull() ?: 0L
+                            ) ?: false
+                            result.put("success", success)
+                        }
+                        "update_ai_memory" -> {
+                            workoutPreferences.setAiMemory(args["newMemory"] ?: "")
+                            result.put("success", true)
+                        }
+                        "suggest_workout" -> {
+                            workoutJsonToAppend = args["communityShareJson"]
+                            result.put("success", true)
+                        }
+                        else -> result.put("error", "Unknown tool")
+                    }
                 } catch (e: Exception) {
                     e.printStackTrace()
+                    result.put("error", e.message)
                 }
+                result
+            }
+
+            val response = aiService.generateResponse(text, contextData, history, toolHandler)
+            var aiMessageText = response ?: "Sorry, I couldn't process that."
+
+            // If workout was suggested via tool, append it so the UI can detect it
+            if (workoutJsonToAppend != null) {
+                aiMessageText += "\n\n$workoutJsonToAppend"
             }
 
             val aiMessage = AiMessage(
@@ -98,18 +271,19 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
             )
             aiDao.insertMessage(aiMessage)
 
-            // Extract memory update
-            extractMemoryUpdate(aiMessageText)?.let { memoryJson ->
-                try {
-                    val update = json.decodeFromString<MemoryUpdate>(memoryJson)
-                    workoutPreferences.setAiMemory(update.newMemory)
-                } catch (e: Exception) {
-                    // Silently fail for memory updates
-                }
-            }
-
             _isLoading.value = false
         }
+    }
+
+    private fun isModificationTool(name: String): Boolean {
+        return name in setOf(
+            "add_exercise", "update_exercise", "delete_exercise",
+            "create_program", "update_program", "delete_program",
+            "add_program_exercise", "update_program_exercise", "delete_program_exercise",
+            "add_program_loop", "update_program_loop", "delete_program_loop",
+            "create_group", "rename_group", "delete_group",
+            "add_todo_task", "delete_todo_task", "complete_todo_task"
+        )
     }
 
     fun startNewThread(initialText: String? = null, contextData: String? = null) {

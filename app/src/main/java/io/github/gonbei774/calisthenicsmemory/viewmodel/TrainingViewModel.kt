@@ -247,85 +247,144 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         targetSets: Int? = null,
         targetValue: Int? = null,
         isFavorite: Boolean = false,
-        restInterval: Int? = null,       // Exercise-specific rest interval (seconds)
-        repDuration: Int? = null,        // Exercise-specific 1-rep duration (seconds)
-        distanceTrackingEnabled: Boolean = false,  // Distance tracking enabled
-        weightTrackingEnabled: Boolean = false,    // Weight tracking enabled
-        assistanceTrackingEnabled: Boolean = false, // Assistance tracking enabled
-        description: String? = null                // Exercise description
+        restInterval: Int? = null,
+        repDuration: Int? = null,
+        distanceTrackingEnabled: Boolean = false,
+        weightTrackingEnabled: Boolean = false,
+        assistanceTrackingEnabled: Boolean = false,
+        description: String? = null
     ) {
         viewModelScope.launch {
-            try {
-                val existingExercises = exercises.value
-                val isDuplicate = existingExercises.any {
-                    it.name.equals(name, ignoreCase = true) && it.type == type
-                }
+            addExerciseSuspend(
+                name, type, group, sortOrder, laterality, targetSets, targetValue,
+                isFavorite, restInterval, repDuration, distanceTrackingEnabled,
+                weightTrackingEnabled, assistanceTrackingEnabled, description
+            )
+        }
+    }
 
-                if (isDuplicate) {
+    suspend fun addExerciseSuspend(
+        name: String,
+        type: String,
+        group: String? = null,
+        sortOrder: Int = 0,
+        laterality: String = "Bilateral",
+        targetSets: Int? = null,
+        targetValue: Int? = null,
+        isFavorite: Boolean = false,
+        restInterval: Int? = null,
+        repDuration: Int? = null,
+        distanceTrackingEnabled: Boolean = false,
+        weightTrackingEnabled: Boolean = false,
+        assistanceTrackingEnabled: Boolean = false,
+        description: String? = null
+    ): Long? = withContext(Dispatchers.IO) {
+        try {
+            val existingExercises = exerciseDao.getAllExercisesSync()
+            val isDuplicate = existingExercises.any {
+                it.name.equals(name, ignoreCase = true) && it.type == type
+            }
+
+            if (isDuplicate) {
+                withContext(Dispatchers.Main) {
                     _snackbarMessage.value = UiMessage.AlreadyRegistered(name, type)
-                    return@launch
                 }
+                return@withContext null
+            }
 
-                val exercise = Exercise(
-                    name = name,
-                    type = type,
-                    group = group,
-                    sortOrder = sortOrder,
-                    laterality = laterality,
-                    targetSets = targetSets,
-                    targetValue = targetValue,
-                    isFavorite = isFavorite,
-                    restInterval = restInterval,
-                    repDuration = repDuration,
-                    distanceTrackingEnabled = distanceTrackingEnabled,
-                    weightTrackingEnabled = weightTrackingEnabled,
-                    assistanceTrackingEnabled = assistanceTrackingEnabled,
-                    description = description
-                )
-                exerciseDao.insertExercise(exercise)
+            val exercise = Exercise(
+                name = name,
+                type = type,
+                group = group,
+                sortOrder = sortOrder,
+                laterality = laterality,
+                targetSets = targetSets,
+                targetValue = targetValue,
+                isFavorite = isFavorite,
+                restInterval = restInterval,
+                repDuration = repDuration,
+                distanceTrackingEnabled = distanceTrackingEnabled,
+                weightTrackingEnabled = weightTrackingEnabled,
+                assistanceTrackingEnabled = assistanceTrackingEnabled,
+                description = description
+            )
+            val id = exerciseDao.insertExercise(exercise)
+            withContext(Dispatchers.Main) {
                 _snackbarMessage.value = UiMessage.ExerciseAdded
-            } catch (e: SQLiteConstraintException) {
+            }
+            id
+        } catch (e: SQLiteConstraintException) {
+            withContext(Dispatchers.Main) {
                 _snackbarMessage.value = UiMessage.ExerciseAlreadyExists
-            } catch (e: Exception) {
+            }
+            null
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
                 _snackbarMessage.value = UiMessage.ErrorOccurred
             }
+            null
         }
     }
 
     fun updateExercise(exercise: Exercise) {
         viewModelScope.launch {
-            try {
-                val existingExercises = exercises.value
-                val isDuplicate = existingExercises.any {
-                    it.id != exercise.id &&
-                            it.name.equals(exercise.name, ignoreCase = true) &&
-                            it.type == exercise.type
-                }
+            updateExerciseSuspend(exercise)
+        }
+    }
 
-                if (isDuplicate) {
+    suspend fun updateExerciseSuspend(exercise: Exercise): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val existingExercises = exerciseDao.getAllExercisesSync()
+            val isDuplicate = existingExercises.any {
+                it.id != exercise.id &&
+                        it.name.equals(exercise.name, ignoreCase = true) &&
+                        it.type == exercise.type
+            }
+
+            if (isDuplicate) {
+                withContext(Dispatchers.Main) {
                     _snackbarMessage.value = UiMessage.AlreadyInUse(exercise.name, exercise.type)
-                    return@launch
                 }
+                return@withContext false
+            }
 
-                exerciseDao.updateExercise(exercise)
+            exerciseDao.updateExercise(exercise)
+            withContext(Dispatchers.Main) {
                 _snackbarMessage.value = UiMessage.ExerciseUpdated
-            } catch (e: SQLiteConstraintException) {
+            }
+            true
+        } catch (e: SQLiteConstraintException) {
+            withContext(Dispatchers.Main) {
                 _snackbarMessage.value = UiMessage.ExerciseAlreadyExists
-            } catch (e: Exception) {
+            }
+            false
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
                 _snackbarMessage.value = UiMessage.ErrorOccurred
             }
+            false
         }
     }
 
     fun deleteExercise(exercise: Exercise) {
         viewModelScope.launch {
-            try {
-                exerciseDao.deleteExercise(exercise)
-                todoTaskDao.deleteByReference(TodoTask.TYPE_EXERCISE, exercise.id)
+            deleteExerciseSuspend(exercise)
+        }
+    }
+
+    suspend fun deleteExerciseSuspend(exercise: Exercise): Boolean = withContext(Dispatchers.IO) {
+        try {
+            exerciseDao.deleteExercise(exercise)
+            todoTaskDao.deleteByReference(TodoTask.TYPE_EXERCISE, exercise.id)
+            withContext(Dispatchers.Main) {
                 _snackbarMessage.value = UiMessage.ExerciseDeleted
-            } catch (e: Exception) {
+            }
+            true
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
                 _snackbarMessage.value = UiMessage.ErrorOccurred
             }
+            false
         }
     }
 
@@ -455,64 +514,89 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
 
     fun createGroup(name: String) {
         viewModelScope.launch {
-            flushGroupOrder()
-            try {
-                val existingGroups = groupDao.getAllGroupsSync()
-                val group = ExerciseGroup(name = name, displayOrder = existingGroups.size)
-                groupDao.insertGroup(group)
+            createGroupSuspend(name)
+        }
+    }
+
+    suspend fun createGroupSuspend(name: String): Long? = withContext(Dispatchers.IO) {
+        flushGroupOrder()
+        try {
+            val existingGroups = groupDao.getAllGroupsSync()
+            val group = ExerciseGroup(name = name, displayOrder = existingGroups.size)
+            val id = groupDao.insertGroup(group)
+            withContext(Dispatchers.Main) {
                 _snackbarMessage.value = UiMessage.GroupCreated
-            } catch (e: Exception) {
+            }
+            id
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
                 _snackbarMessage.value = UiMessage.GroupAlreadyExists
             }
+            null
         }
     }
 
     fun renameGroup(oldName: String, newName: String) {
         viewModelScope.launch {
-            flushGroupOrder()
-            try {
-                // 1. Update groups table
-                val group = groupDao.getGroupByName(oldName)
-                if (group != null) {
-                    groupDao.updateGroup(group.copy(name = newName))
-                }
+            renameGroupSuspend(oldName, newName)
+        }
+    }
 
-                // 2. Also update exercise group fields
-                val affectedExercises = exercises.value.filter { it.group == oldName }
-                affectedExercises.forEach { exercise ->
-                    exerciseDao.updateExercise(exercise.copy(group = newName))
-                }
+    suspend fun renameGroupSuspend(oldName: String, newName: String): Boolean = withContext(Dispatchers.IO) {
+        flushGroupOrder()
+        try {
+            val group = groupDao.getGroupByName(oldName)
+            if (group != null) {
+                groupDao.updateGroup(group.copy(name = newName))
+            }
 
+            val affectedExercises = exerciseDao.getExercisesByGroup(oldName)
+            affectedExercises.forEach { exercise ->
+                exerciseDao.updateExercise(exercise.copy(group = newName))
+            }
+
+            withContext(Dispatchers.Main) {
                 _snackbarMessage.value = UiMessage.GroupRenamed
-            } catch (e: Exception) {
+            }
+            true
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
                 _snackbarMessage.value = UiMessage.ErrorOccurred
             }
+            false
         }
     }
 
     fun deleteGroup(groupName: String) {
         viewModelScope.launch {
-            flushGroupOrder()
-            try {
-                // Linked deletion of ToDo (get IDs before deleting group)
-                val group = groupDao.getGroupByName(groupName)
-                if (group != null) {
-                    todoTaskDao.deleteByReference(TodoTask.TYPE_GROUP, group.id)
-                }
+            deleteGroupSuspend(groupName)
+        }
+    }
 
-                // 1. Delete from groups table
-                groupDao.deleteGroupByName(groupName)
+    suspend fun deleteGroupSuspend(groupName: String): Boolean = withContext(Dispatchers.IO) {
+        flushGroupOrder()
+        try {
+            val group = groupDao.getGroupByName(groupName)
+            if (group != null) {
+                todoTaskDao.deleteByReference(TodoTask.TYPE_GROUP, group.id)
+            }
 
-                // 2. Set exercise group to null
-                val affectedExercises = exercises.value.filter { it.group == groupName }
-                affectedExercises.forEach { exercise ->
-                    exerciseDao.updateExercise(exercise.copy(group = null, sortOrder = 0))
-                }
+            groupDao.deleteGroupByName(groupName)
 
+            val affectedExercises = exerciseDao.getExercisesByGroup(groupName)
+            affectedExercises.forEach { exercise ->
+                exerciseDao.updateExercise(exercise.copy(group = null, sortOrder = 0))
+            }
+
+            withContext(Dispatchers.Main) {
                 _snackbarMessage.value = UiMessage.GroupDeleted
-            } catch (e: Exception) {
+            }
+            true
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
                 _snackbarMessage.value = UiMessage.ErrorOccurred
             }
+            false
         }
     }
     // ========================================
@@ -1577,17 +1661,24 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
 
     fun addTodoTask(exerciseId: Long) {
         viewModelScope.launch {
-            try {
-                val sortOrder = todoTaskDao.getNextSortOrder()
-                val task = TodoTask(
-                    type = TodoTask.TYPE_EXERCISE,
-                    referenceId = exerciseId,
-                    sortOrder = sortOrder
-                )
-                todoTaskDao.insert(task)
-            } catch (e: Exception) {
+            addTodoTaskSuspend(TodoTask.TYPE_EXERCISE, exerciseId)
+        }
+    }
+
+    suspend fun addTodoTaskSuspend(type: String, referenceId: Long): Long? = withContext(Dispatchers.IO) {
+        try {
+            val sortOrder = todoTaskDao.getNextSortOrder()
+            val task = TodoTask(
+                type = type,
+                referenceId = referenceId,
+                sortOrder = sortOrder
+            )
+            todoTaskDao.insert(task)
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
                 _snackbarMessage.value = UiMessage.ErrorOccurred
             }
+            null
         }
     }
 
@@ -1697,11 +1788,19 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
 
     fun deleteTodoTask(taskId: Long) {
         viewModelScope.launch {
-            try {
-                todoTaskDao.deleteById(taskId)
-            } catch (e: Exception) {
+            deleteTodoTaskSuspend(taskId)
+        }
+    }
+
+    suspend fun deleteTodoTaskSuspend(taskId: Long): Boolean = withContext(Dispatchers.IO) {
+        try {
+            todoTaskDao.deleteById(taskId)
+            true
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
                 _snackbarMessage.value = UiMessage.ErrorOccurred
             }
+            false
         }
     }
 
@@ -1717,22 +1816,30 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
 
     fun completeTodoTaskByReference(type: String, referenceId: Long) {
         viewModelScope.launch {
-            try {
-                val task = todoTaskDao.getTaskByReference(type, referenceId)
-                if (task != null && task.isRepeating()) {
-                    val todayStr = java.time.LocalDate.now().toString()
-                    todoTaskDao.updateLastCompletedDate(type, referenceId, todayStr)
-                } else {
-                    todoTaskDao.deleteByReference(type, referenceId)
-                }
+            completeTodoTaskSuspend(type, referenceId)
+        }
+    }
 
-                // Check group ToDo completion when exercise is done
-                if (type == TodoTask.TYPE_EXERCISE) {
-                    checkGroupTodoCompletion(referenceId)
-                }
-            } catch (e: Exception) {
+    suspend fun completeTodoTaskSuspend(type: String, referenceId: Long): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val task = todoTaskDao.getTaskByReference(type, referenceId)
+            if (task != null && task.isRepeating()) {
+                val todayStr = java.time.LocalDate.now().toString()
+                todoTaskDao.updateLastCompletedDate(type, referenceId, todayStr)
+            } else {
+                todoTaskDao.deleteByReference(type, referenceId)
+            }
+
+            // Check group ToDo completion when exercise is done
+            if (type == TodoTask.TYPE_EXERCISE) {
+                checkGroupTodoCompletion(referenceId)
+            }
+            true
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
                 _snackbarMessage.value = UiMessage.ErrorOccurred
             }
+            false
         }
     }
 
@@ -1847,22 +1954,34 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    suspend fun updateProgram(program: Program) {
+    suspend fun updateProgram(program: Program): Boolean = withContext(Dispatchers.IO) {
         try {
             programDao.update(program)
+            true
         } catch (e: Exception) {
-            _snackbarMessage.value = UiMessage.ErrorOccurred
+            withContext(Dispatchers.Main) {
+                _snackbarMessage.value = UiMessage.ErrorOccurred
+            }
+            false
         }
     }
 
     fun deleteProgram(programId: Long) {
         viewModelScope.launch {
-            try {
-                programDao.deleteById(programId)
-                todoTaskDao.deleteByReference(TodoTask.TYPE_PROGRAM, programId)
-            } catch (e: Exception) {
+            deleteProgramSuspend(programId)
+        }
+    }
+
+    suspend fun deleteProgramSuspend(programId: Long): Boolean = withContext(Dispatchers.IO) {
+        try {
+            programDao.deleteById(programId)
+            todoTaskDao.deleteByReference(TodoTask.TYPE_PROGRAM, programId)
+            true
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
                 _snackbarMessage.value = UiMessage.ErrorOccurred
             }
+            false
         }
     }
 
@@ -1977,19 +2096,27 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    suspend fun updateProgramExercise(programExercise: ProgramExercise) {
+    suspend fun updateProgramExercise(programExercise: ProgramExercise): Boolean = withContext(Dispatchers.IO) {
         try {
             programExerciseDao.update(programExercise)
+            true
         } catch (e: Exception) {
-            _snackbarMessage.value = UiMessage.ErrorOccurred
+            withContext(Dispatchers.Main) {
+                _snackbarMessage.value = UiMessage.ErrorOccurred
+            }
+            false
         }
     }
 
-    suspend fun deleteProgramExercise(programExercise: ProgramExercise) {
+    suspend fun deleteProgramExercise(programExercise: ProgramExercise): Boolean = withContext(Dispatchers.IO) {
         try {
             programExerciseDao.delete(programExercise)
+            true
         } catch (e: Exception) {
-            _snackbarMessage.value = UiMessage.ErrorOccurred
+            withContext(Dispatchers.Main) {
+                _snackbarMessage.value = UiMessage.ErrorOccurred
+            }
+            false
         }
     }
 
@@ -2053,19 +2180,27 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    suspend fun updateProgramLoop(loop: ProgramLoop) {
+    suspend fun updateProgramLoop(loop: ProgramLoop): Boolean = withContext(Dispatchers.IO) {
         try {
             programLoopDao.update(loop)
+            true
         } catch (e: Exception) {
-            _snackbarMessage.value = UiMessage.ErrorOccurred
+            withContext(Dispatchers.Main) {
+                _snackbarMessage.value = UiMessage.ErrorOccurred
+            }
+            false
         }
     }
 
-    suspend fun deleteProgramLoop(loop: ProgramLoop) {
+    suspend fun deleteProgramLoop(loop: ProgramLoop): Boolean = withContext(Dispatchers.IO) {
         try {
             programLoopDao.delete(loop)
+            true
         } catch (e: Exception) {
-            _snackbarMessage.value = UiMessage.ErrorOccurred
+            withContext(Dispatchers.Main) {
+                _snackbarMessage.value = UiMessage.ErrorOccurred
+            }
+            false
         }
     }
 

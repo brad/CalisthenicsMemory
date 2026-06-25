@@ -2,7 +2,6 @@ package io.github.gonbei774.calisthenicsmemory.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.filled.Refresh
-import io.github.gonbei774.calisthenicsmemory.viewmodel.extractAutoUpdate
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,7 +32,6 @@ import io.github.gonbei774.calisthenicsmemory.ui.theme.LocalAppColors
 import io.github.gonbei774.calisthenicsmemory.ui.theme.Purple600
 import io.github.gonbei774.calisthenicsmemory.ui.theme.Slate600
 import io.github.gonbei774.calisthenicsmemory.viewmodel.extractWorkoutJson
-import io.github.gonbei774.calisthenicsmemory.viewmodel.extractMemoryUpdate
 import io.github.gonbei774.calisthenicsmemory.viewmodel.AiViewModel
 import io.github.gonbei774.calisthenicsmemory.viewmodel.TrainingViewModel
 import androidx.compose.material.icons.filled.Face
@@ -461,12 +459,8 @@ fun ChatBubble(
     val textColor = if (message.isUser) Color.White else appColors.textPrimary
 
     val workoutJson = if (!message.isUser) extractWorkoutJson(message.text) else null
-    val memoryJson = if (!message.isUser) extractMemoryUpdate(message.text) else null
-    val autoUpdateJson = if (!message.isUser) extractAutoUpdate(message.text) else null
     var displayText = message.text
     if (workoutJson != null) displayText = displayText.replace(workoutJson!!, "")
-    if (memoryJson != null) displayText = displayText.replace(memoryJson!!, "")
-    if (autoUpdateJson != null) displayText = displayText.replace(autoUpdateJson!!, "")
     displayText = displayText.trim()
 
     Box(

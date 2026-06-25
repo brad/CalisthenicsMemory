@@ -6,7 +6,6 @@ import io.github.gonbei774.calisthenicsmemory.viewmodel.ShareExercise
 import io.github.gonbei774.calisthenicsmemory.viewmodel.ShareProgram
 import io.github.gonbei774.calisthenicsmemory.viewmodel.ShareProgramExercise
 import io.github.gonbei774.calisthenicsmemory.viewmodel.extractWorkoutJson
-import io.github.gonbei774.calisthenicsmemory.viewmodel.extractMemoryUpdate
 import io.github.gonbei774.calisthenicsmemory.viewmodel.validateCommunityShareContent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -110,47 +109,6 @@ class AiCoachWorkoutTest {
         )
         val errors = validateCommunityShareContent(data)
         assertTrue(errors.isEmpty())
-    }
-
-    @Test
-    fun `extractMemoryUpdate extracts memory update JSON`() {
-        val aiResponse = """
-            I've updated my memory about you.
-            {"type": "memory_update", "newMemory": "User has a shoulder injury."}
-            I will keep that in mind.
-        """.trimIndent()
-        val extracted = extractMemoryUpdate(aiResponse)
-        assertEquals("{\"type\": \"memory_update\", \"newMemory\": \"User has a shoulder injury.\"}", extracted)
-    }
-
-    @Test
-    fun `extractMemoryUpdate extracts minified memory update JSON`() {
-        val aiResponse = "Update: {\"type\":\"memory_update\",\"newMemory\":\"Goals: 10 pullups\"} Done."
-        val extracted = extractMemoryUpdate(aiResponse)
-        assertEquals("{\"type\":\"memory_update\",\"newMemory\":\"Goals: 10 pullups\"}", extracted)
-    }
-
-    @Test
-    fun `extractMemoryUpdate extracts from markdown code block`() {
-        val aiResponse = """
-            I've updated my memory.
-            ```json
-            {
-              "type": "memory_update",
-              "newMemory": "User prefers high volume."
-            }
-            ```
-        """.trimIndent()
-        val extracted = extractMemoryUpdate(aiResponse)
-        assertNotNull("Should extract JSON even if inside markdown block", extracted)
-        assertTrue(extracted!!.contains("User prefers high volume."))
-    }
-
-    @Test
-    fun `extractMemoryUpdate handles extra whitespace`() {
-        val aiResponse = "Update: { \"type\" : \"memory_update\" , \"newMemory\" : \"test\" }"
-        val extracted = extractMemoryUpdate(aiResponse)
-        assertNotNull("Should handle extra whitespace", extracted)
     }
 
     @Test
