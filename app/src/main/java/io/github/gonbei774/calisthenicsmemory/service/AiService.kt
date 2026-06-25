@@ -1,12 +1,31 @@
 package io.github.gonbei774.calisthenicsmemory.service
 
 import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.content
 import io.github.gonbei774.calisthenicsmemory.data.WorkoutPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import java.net.HttpURLConnection
+import java.net.URL
+
+@Serializable
+data class GeminiModelList(
+    val models: List<GeminiModel>
+)
+
+@Serializable
+data class GeminiModel(
+    val name: String,
+    val version: String? = null,
+    val displayName: String? = null,
+    val description: String? = null,
+    val supportedGenerationMethods: List<String>
+)
 
 class AiService(private val workoutPreferences: WorkoutPreferences) {
+
+    private val json = Json { ignoreUnknownKeys = true }
 
     private fun getModel(): GenerativeModel? {
         val apiKey = workoutPreferences.getGeminiApiKey()
@@ -16,6 +35,33 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
             modelName = modelName,
             apiKey = apiKey
         )
+    }
+
+    suspend fun fetchAvailableModels(): List<String> = withContext(Dispatchers.IO) {
+        val apiKey = workoutPreferences.getGeminiApiKey()
+        if (apiKey.isBlank()) return@withContext emptyList()
+
+        try {
+            val url = URL("https://generativelanguage.googleapis.com/v1beta/models?key=$apiKey")
+            val connection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.setRequestProperty("Content-Type", "application/json")
+
+            if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+                val modelList = json.decodeFromString<GeminiModelList>(responseText)
+
+                modelList.models
+                    .filter { it.supportedGenerationMethods.contains("generateContent") }
+                    .map { it.name.removePrefix("models/") }
+                    .filter { !it.contains("tts", ignoreCase = true) } // Filter out TTS etc as requested
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
     }
 
     suspend fun generateResponse(

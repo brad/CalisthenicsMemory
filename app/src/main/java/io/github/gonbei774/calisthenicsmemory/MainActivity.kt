@@ -297,6 +297,7 @@ fun CalisthenicsMemoryApp(
                     BackHandler { currentScreen = Screen.Home }
                     SettingsScreenNew(
                         viewModel = viewModel,
+                        aiViewModel = aiViewModel,
                         onNavigateBack = { currentScreen = Screen.Home },
                         onNavigateToLicenses = { currentScreen = Screen.Licenses },
                         onNavigateToBackup = { currentScreen = Screen.Backup },

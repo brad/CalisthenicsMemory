@@ -25,6 +25,7 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
     private val aiDao = database.aiDao()
     private val workoutPreferences = WorkoutPreferences(application)
     private val aiService = AiService(workoutPreferences)
+    private val json = Json { ignoreUnknownKeys = true }
 
     private val _currentThreadId = MutableStateFlow<Long?>(null)
     val currentThreadId = _currentThreadId.asStateFlow()
@@ -43,6 +44,18 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
+
+    private val _availableModels = MutableStateFlow<List<String>>(emptyList())
+    val availableModels = _availableModels.asStateFlow()
+
+    fun fetchModels() {
+        viewModelScope.launch {
+            val models = aiService.fetchAvailableModels()
+            if (models.isNotEmpty()) {
+                _availableModels.value = models
+            }
+        }
+    }
 
     fun sendMessage(text: String, contextData: String, trainingViewModel: TrainingViewModel? = null) {
         viewModelScope.launch {
@@ -68,9 +81,9 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
             var snapshotJson: String? = null
             if (autoUpdateJson != null && trainingViewModel != null) {
                 try {
-                    val autoUpdate = Json { ignoreUnknownKeys = true }.decodeFromString<AutoUpdate>(autoUpdateJson)
+                    val autoUpdate = json.decodeFromString<AutoUpdate>(autoUpdateJson)
                     // Snapshot BEFORE applying
-                    snapshotJson = Json.encodeToString(trainingViewModel.getAllDataAsBackupDataSync())
+                    snapshotJson = json.encodeToString(trainingViewModel.getAllDataAsBackupDataSync())
                     trainingViewModel.applyAutoUpdate(autoUpdate.updatedContext)
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -88,7 +101,7 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
             // Extract memory update
             extractMemoryUpdate(aiMessageText)?.let { memoryJson ->
                 try {
-                    val update = Json { ignoreUnknownKeys = true }.decodeFromString<MemoryUpdate>(memoryJson)
+                    val update = json.decodeFromString<MemoryUpdate>(memoryJson)
                     workoutPreferences.setAiMemory(update.newMemory)
                 } catch (e: Exception) {
                     // Silently fail for memory updates
@@ -145,7 +158,7 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
         val backupJson = message.backupDataJson ?: return
         viewModelScope.launch {
             try {
-                val backupData = Json { ignoreUnknownKeys = true }.decodeFromString<BackupData>(backupJson)
+                val backupData = json.decodeFromString<BackupData>(backupJson)
                 trainingViewModel.applyAutoUpdate(backupData)
                 // Optionally add a system message or update the message to indicate it was undone
                 val undoMessage = AiMessage(

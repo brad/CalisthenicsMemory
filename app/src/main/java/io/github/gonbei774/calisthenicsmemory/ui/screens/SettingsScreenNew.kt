@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +31,7 @@ import io.github.gonbei774.calisthenicsmemory.data.AppTheme
 import io.github.gonbei774.calisthenicsmemory.data.LanguagePreferences
 import io.github.gonbei774.calisthenicsmemory.ui.theme.*
 import io.github.gonbei774.calisthenicsmemory.viewmodel.TrainingViewModel
+import io.github.gonbei774.calisthenicsmemory.viewmodel.AiViewModel
 import io.github.gonbei774.calisthenicsmemory.viewmodel.CsvImportReport
 import io.github.gonbei774.calisthenicsmemory.viewmodel.CsvType
 import kotlinx.coroutines.Dispatchers
@@ -39,6 +42,7 @@ import java.util.Locale
 @Composable
 fun SettingsScreenNew(
     viewModel: TrainingViewModel,
+    aiViewModel: AiViewModel? = null,
     onNavigateBack: () -> Unit,
     onNavigateToLicenses: () -> Unit = {},
     onNavigateToBackup: () -> Unit = {},
@@ -119,6 +123,13 @@ fun SettingsScreenNew(
                 var selectedModel by remember { mutableStateOf(workoutPrefs.getGeminiModel()) }
                 var aiMemory by remember { mutableStateOf(workoutPrefs.getAiMemory()) }
                 var showModelDialog by remember { mutableStateOf(false) }
+                val fetchedModels by aiViewModel?.availableModels?.collectAsState() ?: remember { mutableStateOf(emptyList<String>()) }
+
+                LaunchedEffect(apiKey) {
+                    if (apiKey.isNotBlank()) {
+                        aiViewModel?.fetchModels()
+                    }
+                }
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -189,19 +200,24 @@ fun SettingsScreenNew(
                         }
 
                         if (showModelDialog) {
-                            val models = listOf(
-                                "gemini-2.5-flash",
-                                "gemini-2.0-flash",
-                                "gemini-2.0-flash-lite-preview",
-                                "gemini-1.5-flash",
-                                "gemini-1.5-pro",
-                                "gemini-1.0-pro"
-                            )
+                            val models = fetchedModels.ifEmpty {
+                                listOf(
+                                    "gemini-2.5-flash",
+                                    "gemini-2.0-flash",
+                                    "gemini-2.0-flash-lite-preview",
+                                    "gemini-1.5-flash",
+                                    "gemini-1.5-pro",
+                                    "gemini-1.0-pro"
+                                )
+                            }
                             AlertDialog(
                                 onDismissRequest = { showModelDialog = false },
                                 title = { Text("Select Gemini Model") },
                                 text = {
-                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Column(
+                                        modifier = Modifier.verticalScroll(rememberScrollState()),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
                                         models.forEach { model ->
                                             Card(
                                                 modifier = Modifier.fillMaxWidth(),
