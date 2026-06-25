@@ -308,7 +308,7 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
                         FunctionResponsePart(call.name, result)
                     }
 
-                    val responseContent = Content(role = "tool", parts = toolResponses)
+                    val responseContent = Content(role = "function", parts = toolResponses)
                     response = chat.sendMessage(responseContent)
                 }
 
