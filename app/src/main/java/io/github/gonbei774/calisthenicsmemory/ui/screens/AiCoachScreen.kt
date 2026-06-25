@@ -3,6 +3,7 @@ package io.github.gonbei774.calisthenicsmemory.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.filled.Refresh
 import io.github.gonbei774.calisthenicsmemory.viewmodel.extractAutoUpdate
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -487,12 +488,14 @@ fun ChatBubble(
                 tonalElevation = 1.dp
             ) {
                 if (message.isUser) {
-                    Text(
-                        text = displayText,
-                        color = textColor,
-                        modifier = Modifier.padding(12.dp),
-                        fontSize = 16.sp
-                    )
+                    SelectionContainer {
+                        Text(
+                            text = displayText,
+                            color = textColor,
+                            modifier = Modifier.padding(12.dp),
+                            fontSize = 16.sp
+                        )
+                    }
                 } else {
                     MarkdownText(
                         markdown = displayText,
@@ -500,7 +503,8 @@ fun ChatBubble(
                         style = TextStyle(
                             color = textColor,
                             fontSize = 16.sp
-                        )
+                        ),
+                        isTextSelectable = true
                     )
                 }
             }
