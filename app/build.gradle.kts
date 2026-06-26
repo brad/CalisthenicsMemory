@@ -85,6 +85,13 @@ android {
         jvmTarget = "17"
     }
 
+    packaging {
+        resources {
+            excludes += "META-INF/INDEX.LIST"
+            excludes += "META-INF/DEPENDENCIES"
+        }
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -128,7 +135,7 @@ dependencies {
     // Reorderable (drag and drop)
     implementation("sh.calvin.reorderable:reorderable:3.0.0")
     // Generative AI
-    implementation(libs.generativeai)
+    implementation(libs.google.genai)
     implementation(libs.compose.markdown)
 
     // Testing
