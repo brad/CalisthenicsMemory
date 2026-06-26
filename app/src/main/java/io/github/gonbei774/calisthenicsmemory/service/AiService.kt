@@ -1,16 +1,17 @@
 package io.github.gonbei774.calisthenicsmemory.service
 
-import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.*
+import com.google.genai.Client
+import com.google.genai.types.*
+import io.github.gonbei774.calisthenicsmemory.data.AiMessage
 import io.github.gonbei774.calisthenicsmemory.data.WorkoutPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Optional
 
 @Serializable
 data class GeminiModelList(
@@ -30,192 +31,219 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    private fun getModel(tools: List<Tool>? = null): GenerativeModel? {
+    private fun getClient(): Client? {
         val apiKey = workoutPreferences.getGeminiApiKey()
         if (apiKey.isBlank()) return null
-        val modelName = workoutPreferences.getGeminiModel()
-        return GenerativeModel(
-            modelName = modelName,
-            apiKey = apiKey,
-            tools = tools
-        )
+        return Client.builder().apiKey(apiKey).build()
     }
 
-    private val tools = listOf(
-        Tool(
-            functionDeclarations = listOf(
-                defineFunction(
-                    name = "add_exercise",
-                    description = "Add a new exercise to the database.",
-                    parameters = listOf(
-                        Schema.str("name", "Name of the exercise"),
-                        Schema.str("type", "Type of exercise ('Dynamic' or 'Isometric')"),
-                        Schema.str("group", "Optional group name"),
-                        Schema.int("targetSets", "Optional target sets"),
-                        Schema.int("targetValue", "Optional target reps/seconds"),
-                        Schema.str("laterality", "Optional laterality ('Bilateral' or 'Unilateral')"),
-                        Schema.str("description", "Optional description")
-                    )
-                ),
-                defineFunction(
-                    name = "update_exercise",
-                    description = "Update an existing exercise.",
-                    parameters = listOf(
-                        Schema.int("id", "ID of the exercise to update"),
-                        Schema.str("name", "New name"),
-                        Schema.str("type", "New type"),
-                        Schema.str("group", "New group name"),
-                        Schema.int("targetSets", "New target sets"),
-                        Schema.int("targetValue", "New target reps/seconds"),
-                        Schema.str("laterality", "New laterality"),
-                        Schema.str("description", "New description")
-                    )
-                ),
-                defineFunction(
-                    name = "delete_exercise",
-                    description = "Delete an exercise and its associated Todo tasks.",
-                    parameters = listOf(
-                        Schema.int("id", "ID of the exercise to delete")
-                    )
-                ),
-                defineFunction(
-                    name = "create_program",
-                    description = "Create a new workout program.",
-                    parameters = listOf(
-                        Schema.str("name", "Name of the program")
-                    )
-                ),
-                defineFunction(
-                    name = "update_program",
-                    description = "Rename a workout program.",
-                    parameters = listOf(
-                        Schema.int("id", "ID of the program"),
-                        Schema.str("name", "New name")
-                    )
-                ),
-                defineFunction(
-                    name = "delete_program",
-                    description = "Delete a program.",
-                    parameters = listOf(
-                        Schema.int("id", "ID of the program to delete")
-                    )
-                ),
-                defineFunction(
-                    name = "add_program_exercise",
-                    description = "Add an exercise to a program.",
-                    parameters = listOf(
-                        Schema.int("programId", "ID of the program"),
-                        Schema.int("exerciseId", "ID of the exercise"),
-                        Schema.int("sets", "Number of sets"),
-                        Schema.int("targetValue", "Target reps/seconds"),
-                        Schema.int("intervalSeconds", "Rest interval in seconds"),
-                        Schema.int("loopId", "Optional loop ID")
-                    )
-                ),
-                defineFunction(
-                    name = "update_program_exercise",
-                    description = "Update an exercise entry within a program.",
-                    parameters = listOf(
-                        Schema.int("id", "ID of the program exercise entry"),
-                        Schema.int("sets", "New number of sets"),
-                        Schema.int("targetValue", "New target reps/seconds"),
-                        Schema.int("intervalSeconds", "New rest interval"),
-                        Schema.int("loopId", "New loop ID (null to remove from loop)")
-                    )
-                ),
-                defineFunction(
-                    name = "delete_program_exercise",
-                    description = "Remove an exercise from a program.",
-                    parameters = listOf(
-                        Schema.int("id", "ID of the program exercise entry to delete")
-                    )
-                ),
-                defineFunction(
-                    name = "add_program_loop",
-                    description = "Add a repetition loop to a program.",
-                    parameters = listOf(
-                        Schema.int("programId", "ID of the program"),
-                        Schema.int("rounds", "Number of rounds"),
-                        Schema.int("restBetweenRounds", "Rest between rounds in seconds")
-                    )
-                ),
-                defineFunction(
-                    name = "update_program_loop",
-                    description = "Update a program loop's settings.",
-                    parameters = listOf(
-                        Schema.int("id", "ID of the loop"),
-                        Schema.int("rounds", "New number of rounds"),
-                        Schema.int("restBetweenRounds", "New rest between rounds")
-                    )
-                ),
-                defineFunction(
-                    name = "delete_program_loop",
-                    description = "Delete a loop from a program. Exercises in the loop will remain but become unlooped.",
-                    parameters = listOf(
-                        Schema.int("id", "ID of the loop to delete")
-                    )
-                ),
-                defineFunction(
-                    name = "create_group",
-                    description = "Create a new exercise group.",
-                    parameters = listOf(
-                        Schema.str("name", "Name of the group")
-                    )
-                ),
-                defineFunction(
-                    name = "rename_group",
-                    description = "Rename an exercise group.",
-                    parameters = listOf(
-                        Schema.str("oldName", "Current name of the group"),
-                        Schema.str("newName", "New name for the group")
-                    )
-                ),
-                defineFunction(
-                    name = "delete_group",
-                    description = "Delete an exercise group.",
-                    parameters = listOf(
-                        Schema.str("name", "Name of the group to delete")
-                    )
-                ),
-                defineFunction(
-                    name = "add_todo_task",
-                    description = "Add an exercise or program to the Todo list.",
-                    parameters = listOf(
-                        Schema.str("type", "Task type ('EXERCISE', 'PROGRAM', 'GROUP', or 'INTERVAL')"),
-                        Schema.int("referenceId", "ID of the exercise, program, or group")
-                    )
-                ),
-                defineFunction(
-                    name = "delete_todo_task",
-                    description = "Delete a Todo task.",
-                    parameters = listOf(
-                        Schema.int("id", "ID of the task to delete")
-                    )
-                ),
-                defineFunction(
-                    name = "complete_todo_task",
-                    description = "Mark a Todo task as completed.",
-                    parameters = listOf(
-                        Schema.str("type", "Task type"),
-                        Schema.int("referenceId", "Reference ID of the item")
-                    )
-                ),
-                defineFunction(
-                    name = "update_ai_memory",
-                    description = "Update the persistent memory about the user.",
-                    parameters = listOf(
-                        Schema.str("newMemory", "Concise summary of everything known about the user (replaces existing memory)")
-                    )
-                ),
-                defineFunction(
-                    name = "suggest_workout",
-                    description = "Suggest a workout program. This will trigger a specialized UI dialog.",
-                    parameters = listOf(
-                        Schema.str("communityShareJson", "Complete CommunityShareData JSON string")
-                    )
-                )
-            )
+    private fun defineFunction(funcName: String, funcDesc: String, params: Map<String, Any>, req: List<String>): FunctionDeclaration {
+        val schemaMap: Map<String, Any> = mapOf(
+            "type" to "OBJECT",
+            "properties" to params,
+            "required" to req
         )
+
+        return FunctionDeclaration.builder()
+            .name(funcName)
+            .description(funcDesc)
+            .parametersJsonSchema(schemaMap)
+            .build()
+    }
+
+    private val toolsList = listOf(
+        Tool.builder().functionDeclarations(listOf(
+            defineFunction(
+                "add_exercise",
+                "Add a new exercise to the database.",
+                mapOf(
+                    "name" to mapOf("type" to "STRING", "description" to "Name of the exercise"),
+                    "type" to mapOf("type" to "STRING", "description" to "Type of exercise ('Dynamic' or 'Isometric')"),
+                    "group" to mapOf("type" to "STRING", "description" to "Optional group name"),
+                    "targetSets" to mapOf("type" to "INTEGER", "description" to "Optional target sets"),
+                    "targetValue" to mapOf("type" to "INTEGER", "description" to "Optional target reps/seconds"),
+                    "laterality" to mapOf("type" to "STRING", "description" to "Optional laterality ('Bilateral' or 'Unilateral')"),
+                    "description" to mapOf("type" to "STRING", "description" to "Optional description")
+                ),
+                listOf("name", "type")
+            ),
+            defineFunction(
+                "update_exercise",
+                "Update an existing exercise.",
+                mapOf(
+                    "id" to mapOf("type" to "INTEGER", "description" to "ID of the exercise to update"),
+                    "name" to mapOf("type" to "STRING", "description" to "New name"),
+                    "type" to mapOf("type" to "STRING", "description" to "New type"),
+                    "group" to mapOf("type" to "STRING", "description" to "New group name"),
+                    "targetSets" to mapOf("type" to "INTEGER", "description" to "New target sets"),
+                    "targetValue" to mapOf("type" to "INTEGER", "description" to "New target reps/seconds"),
+                    "laterality" to mapOf("type" to "STRING", "description" to "New laterality"),
+                    "description" to mapOf("type" to "STRING", "description" to "New description")
+                ),
+                listOf("id")
+            ),
+            defineFunction(
+                "delete_exercise",
+                "Delete an exercise and its associated Todo tasks.",
+                mapOf(
+                    "id" to mapOf("type" to "INTEGER", "description" to "ID of the exercise to delete")
+                ),
+                listOf("id")
+            ),
+            defineFunction(
+                "create_program",
+                "Create a new workout program.",
+                mapOf(
+                    "name" to mapOf("type" to "STRING", "description" to "Name of the program")
+                ),
+                listOf("name")
+            ),
+            defineFunction(
+                "update_program",
+                "Rename a workout program.",
+                mapOf(
+                    "id" to mapOf("type" to "INTEGER", "description" to "ID of the program"),
+                    "name" to mapOf("type" to "STRING", "description" to "New name")
+                ),
+                listOf("id", "name")
+            ),
+            defineFunction(
+                "delete_program",
+                "Delete a program.",
+                mapOf(
+                    "id" to mapOf("type" to "INTEGER", "description" to "ID of the program to delete")
+                ),
+                listOf("id")
+            ),
+            defineFunction(
+                "add_program_exercise",
+                "Add an exercise to a program.",
+                mapOf(
+                    "programId" to mapOf("type" to "INTEGER", "description" to "ID of the program"),
+                    "exerciseId" to mapOf("type" to "INTEGER", "description" to "ID of the exercise"),
+                    "sets" to mapOf("type" to "INTEGER", "description" to "Number of sets"),
+                    "targetValue" to mapOf("type" to "INTEGER", "description" to "Target reps/seconds"),
+                    "intervalSeconds" to mapOf("type" to "INTEGER", "description" to "Rest interval in seconds"),
+                    "loopId" to mapOf("type" to "INTEGER", "description" to "Optional loop ID")
+                ),
+                listOf("programId", "exerciseId", "sets", "targetValue", "intervalSeconds")
+            ),
+            defineFunction(
+                "update_program_exercise",
+                "Update an exercise entry within a program.",
+                mapOf(
+                    "id" to mapOf("type" to "INTEGER", "description" to "ID of the program exercise entry"),
+                    "sets" to mapOf("type" to "INTEGER", "description" to "New number of sets"),
+                    "targetValue" to mapOf("type" to "INTEGER", "description" to "New target reps/seconds"),
+                    "intervalSeconds" to mapOf("type" to "INTEGER", "description" to "New rest interval"),
+                    "loopId" to mapOf("type" to "INTEGER", "description" to "New loop ID (null to remove from loop)")
+                ),
+                listOf("id")
+            ),
+            defineFunction(
+                "delete_program_exercise",
+                "Remove an exercise from a program.",
+                mapOf(
+                    "id" to mapOf("type" to "INTEGER", "description" to "ID of the program exercise entry to delete")
+                ),
+                listOf("id")
+            ),
+            defineFunction(
+                "add_program_loop",
+                "Add a repetition loop to a program.",
+                mapOf(
+                    "programId" to mapOf("type" to "INTEGER", "description" to "ID of the program"),
+                    "rounds" to mapOf("type" to "INTEGER", "description" to "Number of rounds"),
+                    "restBetweenRounds" to mapOf("type" to "INTEGER", "description" to "Rest between rounds in seconds")
+                ),
+                listOf("programId", "rounds", "restBetweenRounds")
+            ),
+            defineFunction(
+                "update_program_loop",
+                "Update a program loop's settings.",
+                mapOf(
+                    "id" to mapOf("type" to "INTEGER", "description" to "ID of the loop"),
+                    "rounds" to mapOf("type" to "INTEGER", "description" to "New number of rounds"),
+                    "restBetweenRounds" to mapOf("type" to "INTEGER", "description" to "New rest between rounds")
+                ),
+                listOf("id")
+            ),
+            defineFunction(
+                "delete_program_loop",
+                "Delete a loop from a program. Exercises in the loop will remain but become unlooped.",
+                mapOf(
+                    "id" to mapOf("type" to "INTEGER", "description" to "ID of the loop to delete")
+                ),
+                listOf("id")
+            ),
+            defineFunction(
+                "create_group",
+                "Create a new exercise group.",
+                mapOf(
+                    "name" to mapOf("type" to "STRING", "description" to "Name of the group")
+                ),
+                listOf("name")
+            ),
+            defineFunction(
+                "rename_group",
+                "Rename an exercise group.",
+                mapOf(
+                    "oldName" to mapOf("type" to "STRING", "description" to "Current name of the group"),
+                    "newName" to mapOf("type" to "STRING", "description" to "New name for the group")
+                ),
+                listOf("oldName", "newName")
+            ),
+            defineFunction(
+                "delete_group",
+                "Delete an exercise group.",
+                mapOf(
+                    "name" to mapOf("type" to "STRING", "description" to "Name of the group to delete")
+                ),
+                listOf("name")
+            ),
+            defineFunction(
+                "add_todo_task",
+                "Add an exercise or program to the Todo list.",
+                mapOf(
+                    "type" to mapOf("type" to "STRING", "description" to "Task type ('EXERCISE', 'PROGRAM', 'GROUP', or 'INTERVAL')"),
+                    "referenceId" to mapOf("type" to "INTEGER", "description" to "ID of the exercise, program, or group")
+                ),
+                listOf("type", "referenceId")
+            ),
+            defineFunction(
+                "delete_todo_task",
+                "Delete a Todo task.",
+                mapOf(
+                    "id" to mapOf("type" to "INTEGER", "description" to "ID of the task to delete")
+                ),
+                listOf("id")
+            ),
+            defineFunction(
+                "complete_todo_task",
+                "Mark a Todo task as completed.",
+                mapOf(
+                    "type" to mapOf("type" to "STRING", "description" to "Task type"),
+                    "referenceId" to mapOf("type" to "INTEGER", "description" to "Reference ID of the item")
+                ),
+                listOf("type", "referenceId")
+            ),
+            defineFunction(
+                "update_ai_memory",
+                "Update the persistent memory about the user.",
+                mapOf(
+                    "newMemory" to mapOf("type" to "STRING", "description" to "Concise summary of everything known about the user (replaces existing memory)")
+                ),
+                listOf("newMemory")
+            ),
+            defineFunction(
+                "suggest_workout",
+                "Suggest a workout program. This will trigger a specialized UI dialog.",
+                mapOf(
+                    "communityShareJson" to mapOf("type" to "STRING", "description" to "Complete CommunityShareData JSON string")
+                ),
+                listOf("communityShareJson")
+            )
+        )).build()
     )
 
     suspend fun fetchAvailableModels(): List<String> = withContext(Dispatchers.IO) {
@@ -235,7 +263,7 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
                 modelList.models
                     .filter { it.supportedGenerationMethods.contains("generateContent") }
                     .map { it.name.removePrefix("models/") }
-                    .filter { !it.contains("tts", ignoreCase = true) } // Filter out TTS etc as requested
+                    .filter { !it.contains("tts", ignoreCase = true) }
             } else {
                 emptyList()
             }
@@ -248,18 +276,19 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
     suspend fun generateResponse(
         prompt: String,
         contextData: String,
-        history: List<io.github.gonbei774.calisthenicsmemory.data.AiMessage> = emptyList(),
+        history: List<AiMessage> = emptyList(),
         toolHandler: suspend (String, Map<String, String?>) -> JSONObject = { _, _ -> JSONObject() }
     ): String? {
         return withContext(Dispatchers.IO) {
-            val model = getModel(tools) ?: return@withContext "Please set your Gemini API Key in Settings first."
+            val client = getClient() ?: return@withContext "Please set your Gemini API Key in Settings first."
+            val modelName = workoutPreferences.getGeminiModel()
 
             val aiMemory = workoutPreferences.getAiMemory()
             val aiMemoryPrompt = if (aiMemory.isNotBlank()) {
                 "\nCoach Memory (Your knowledge about the user):\n$aiMemory\n"
             } else ""
 
-            val systemInstruction = """
+            val systemInstructionText = """
                 You are a professional calisthenics coach assistant for the "Calisthenics Memory" app.
                 The app uses a specific JSON format for exercises, programs, and records.
                 $aiMemoryPrompt
@@ -281,38 +310,62 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
             """.trimIndent()
 
             val chatHistory = history.map {
-                content(if (it.isUser) "user" else "model") { text(it.text) }
+                Content.builder()
+                    .role(if (it.isUser) "user" else "model")
+                    .parts(listOf(Part.builder().text(it.text).build()))
+                    .build()
             }
 
-            val chat = model.startChat(chatHistory)
+            val config = GenerateContentConfig.builder()
+                .systemInstruction(Content.fromParts(Part.fromText(systemInstructionText)))
+                .tools(toolsList)
+                .build()
 
             try {
-                // Initial message with system instruction as part of the context if possible,
-                // but GenerativeModel doesn't have a direct system instruction field in this version.
-                // We'll prepended it to the user prompt.
-                val initialPromptWithInstructions = if (chatHistory.isEmpty()) {
-                    "$systemInstruction\n\nUser Request: $prompt"
-                } else {
-                    prompt
-                }
+                val contents = chatHistory.toMutableList()
+                contents.add(Content.builder().role("user").parts(listOf(Part.builder().text(prompt).build())).build())
 
-                var response = chat.sendMessage(initialPromptWithInstructions)
+                var response = client.models.generateContent(modelName, contents, config)
 
                 // Tool call loop
-                for (i in 1..5) { // Limit iterations
-                    val toolCalls = response.candidates.first().content.parts.filterIsInstance<FunctionCallPart>()
+                for (i in 1..5) {
+                    val candidate = response.candidates().get()[0]
+                    val candidateContent = candidate.content().get()
+                    val parts = candidateContent.parts().get()
+                    val toolCalls = parts.filter { it.functionCall().isPresent }
+
                     if (toolCalls.isEmpty()) break
 
-                    val toolResponses = toolCalls.map { call ->
-                        val result = toolHandler(call.name, call.args)
-                        FunctionResponsePart(call.name, result)
+                    val toolResponses = toolCalls.map { part ->
+                        val call = part.functionCall().get()
+                        val funcName = call.name().get()
+                        val funcArgs = call.args().orElse(emptyMap()).mapValues { it.value?.toString() }
+                        val result = toolHandler(funcName, funcArgs)
+
+                        val resultMap = mutableMapOf<String, Any?>()
+                        val keys = result.keys()
+                        while (keys.hasNext()) {
+                            val key = keys.next()
+                            resultMap[key] = result.get(key)
+                        }
+
+                        Part.builder()
+                            .functionResponse(
+                                FunctionResponse.builder()
+                                    .name(funcName)
+                                    .response(resultMap)
+                                    .build()
+                            )
+                            .build()
                     }
 
-                    val responseContent = Content(role = "function", parts = toolResponses)
-                    response = chat.sendMessage(responseContent)
+                    contents.add(candidateContent)
+                    contents.add(Content.builder().role("function").parts(toolResponses).build())
+
+                    response = client.models.generateContent(modelName, contents, config)
                 }
 
-                response.text
+                response.text()
             } catch (e: Exception) {
                 "Error: ${e.message}"
             }
