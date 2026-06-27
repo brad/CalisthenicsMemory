@@ -3,6 +3,8 @@ package io.github.gonbei774.calisthenicsmemory.viewmodel
 import io.github.gonbei774.calisthenicsmemory.R
 import kotlinx.serialization.encodeToString
 import io.github.gonbei774.calisthenicsmemory.data.AiMessage
+import io.github.gonbei774.calisthenicsmemory.service.GenerateResponseResult
+import kotlinx.coroutines.delay
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
@@ -41,6 +43,9 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _isLoading = MutableStateFlow(false)
+    private val _retryCountdown = MutableStateFlow(0)
+    val retryCountdown = _retryCountdown.asStateFlow()
+
     val isLoading = _isLoading.asStateFlow()
 
     private val _availableModels = MutableStateFlow<List<String>>(emptyList())
@@ -49,48 +54,41 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
     fun fetchModels() {
         viewModelScope.launch {
             val models = aiService.fetchAvailableModels()
-            if (models.isNotEmpty()) {
-                _availableModels.value = models
-            }
+            _availableModels.value = models
         }
     }
 
     fun sendMessage(text: String, contextData: String, trainingViewModel: TrainingViewModel? = null) {
         viewModelScope.launch {
+            _isLoading.value = true
+
             var threadId = _currentThreadId.value
             if (threadId == null) {
-                val title = if (text.length > 30) text.take(27) + "..." else text
-                threadId = aiDao.insertThread(AiThread(title = title))
+                threadId = aiDao.insertThread(AiThread(title = text.take(50)))
                 _currentThreadId.value = threadId
             }
 
-            val userMessage = AiMessage(threadId = threadId, text = text, isUser = true)
-            aiDao.insertMessage(userMessage)
+            // Snapshot data for undo if tools might be called
+            val snapshotJson = trainingViewModel?.getAllDataAsJson()
 
-            _isLoading.value = true
+            aiDao.insertMessage(AiMessage(threadId = threadId, text = text, isUser = true))
+
             val history = aiDao.getMessagesForThreadSync(threadId)
-
-            var snapshotJson: String? = null
             var workoutJsonToAppend: String? = null
 
-            val toolHandler: suspend (String, Map<String, String?>) -> JSONObject = { name, args ->
+            val toolHandler: suspend (String, Map<String, String?>) -> JSONObject = { funcName, args ->
                 val result = JSONObject()
                 try {
-                    // Snapshot before first modification in this turn
-                    if (trainingViewModel != null && snapshotJson == null && isModificationTool(name)) {
-                        snapshotJson = json.encodeToString(trainingViewModel.getAllDataAsBackupDataSync())
-                    }
-
-                    when (name) {
+                    when (funcName) {
                         "add_exercise" -> {
                             val id = trainingViewModel?.addExerciseSuspend(
                                 name = args["name"] ?: "",
-                                type = args["type"] ?: "Dynamic",
-                                group = args["group"],
-                                targetSets = args["targetSets"]?.toIntOrNull(),
-                                targetValue = args["targetValue"]?.toIntOrNull(),
-                                laterality = args["laterality"] ?: "Bilateral",
-                                description = args["description"]
+                                type = args["type"] ?: "DYNAMIC",
+                                group = args["group"] ?: "",
+                                targetSets = args["targetSets"]?.toIntOrNull() ?: 3,
+                                targetValue = args["targetValue"]?.toIntOrNull() ?: 10,
+                                laterality = args["laterality"] ?: "BILATERAL",
+                                description = args["description"] ?: ""
                             )
                             result.put("success", id != null)
                             if (id != null) result.put("id", id)
@@ -163,11 +161,6 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
                         "update_program_exercise" -> {
                             val id = args["id"]?.toLongOrNull()
                             if (id != null) {
-                                val existing = trainingViewModel?.getProgramExercisesSync(0)?.find { it.id == id } // ProgramId 0 is ignore in DAO for getById equivalent usually, but we need to find it across all programs or have a proper getById
-                                // Actually, ProgramExerciseDao doesn't have getById.
-                                // Let's just use what we have or assume the coach knows the programId if we had it.
-                                // For now, I'll just use a placeholder PID or add getById to DAO if I could.
-                                // Alternatively, skip this tool or just implement it with a generic update if possible.
                                 result.put("success", false)
                                 result.put("error", "Not implemented yet")
                             } else result.put("success", false)
@@ -255,12 +248,40 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
                 result
             }
 
-            val response = aiService.generateResponse(text, contextData, history, toolHandler)
-            var aiMessageText = response ?: "Sorry, I couldn't process that."
+            var responseResult: GenerateResponseResult
+            var retries = 0
+            val maxRetries = 3
 
-            // If workout was suggested via tool, append it so the UI can detect it
-            if (workoutJsonToAppend != null) {
-                aiMessageText += "\n\n$workoutJsonToAppend"
+            while (true) {
+                responseResult = aiService.generateResponse(text, contextData, history, toolHandler)
+                if (responseResult is GenerateResponseResult.RateLimit && retries < maxRetries) {
+                    retries++
+                    var secondsLeft = responseResult.retryAfterSeconds
+                    while (secondsLeft > 0) {
+                        _retryCountdown.value = secondsLeft
+                        delay(1000)
+                        secondsLeft--
+                    }
+                    _retryCountdown.value = 0
+                    continue
+                }
+                break
+            }
+
+            val aiMessageText = when (responseResult) {
+                is GenerateResponseResult.Success -> {
+                    var finalChatText = responseResult.text
+                    if (workoutJsonToAppend != null) {
+                        finalChatText += "\n\n$workoutJsonToAppend"
+                    }
+                    finalChatText
+                }
+                is GenerateResponseResult.RateLimit -> {
+                    getApplication<Application>().getString(R.string.ai_coach_error_quota_exceeded)
+                }
+                is GenerateResponseResult.Error -> {
+                    responseResult.message
+                }
             }
 
             val aiMessage = AiMessage(
