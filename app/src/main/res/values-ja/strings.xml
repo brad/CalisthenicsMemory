@@ -773,4 +773,6 @@
     <string name="ai_coach_memory">コーチの「記憶」</string>
     <string name="ai_coach_memory_hint">コーチに覚えておいてほしいこと（怪我の履歴、特定の目標、好みのスタイルなど）を入力してください</string>
     <string name="ai_coach_memory_description">この情報はすべての会話でAIコーチに提供され、よりパーソナライズされたアドバイスを行うために使用されます。</string>
+    <string name="ai_coach_error_quota_exceeded">クォータ制限を超えました。しばらく待ってから再度お試しください。</string>
+    <string name="ai_coach_retrying_in">クォータ制限超過。%d秒後に再試行します…</string>
 </resources>

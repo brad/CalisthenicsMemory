@@ -783,4 +783,6 @@
     <string name="ai_coach_no_workout_found">No workout data found in message.</string>
     <string name="ai_coach_undo_changes">Undo Changes</string>
     <string name="ai_coach_auto_updated_undone">[System: Auto-update undone]</string>
+    <string name="ai_coach_error_quota_exceeded">Quota exceeded. Please wait a moment and try again.</string>
+    <string name="ai_coach_retrying_in">Quota exceeded. Retrying in %ds…</string>
 </resources>

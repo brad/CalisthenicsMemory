@@ -13,6 +13,12 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Optional
 
+sealed class GenerateResponseResult {
+    data class Success(val text: String) : GenerateResponseResult()
+    data class Error(val message: String) : GenerateResponseResult()
+    data class RateLimit(val retryAfterSeconds: Int) : GenerateResponseResult()
+}
+
 @Serializable
 data class GeminiModelList(
     val models: List<GeminiModel>
@@ -55,36 +61,36 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
         Tool.builder().functionDeclarations(listOf(
             defineFunction(
                 "add_exercise",
-                "Add a new exercise to the database.",
+                "Add a new exercise to the user's library.",
                 mapOf(
                     "name" to mapOf("type" to "STRING", "description" to "Name of the exercise"),
-                    "type" to mapOf("type" to "STRING", "description" to "Type of exercise ('Dynamic' or 'Isometric')"),
-                    "group" to mapOf("type" to "STRING", "description" to "Optional group name"),
-                    "targetSets" to mapOf("type" to "INTEGER", "description" to "Optional target sets"),
-                    "targetValue" to mapOf("type" to "INTEGER", "description" to "Optional target reps/seconds"),
-                    "laterality" to mapOf("type" to "STRING", "description" to "Optional laterality ('Bilateral' or 'Unilateral')"),
-                    "description" to mapOf("type" to "STRING", "description" to "Optional description")
+                    "type" to mapOf("type" to "STRING", "description" to "Exercise type ('DYNAMIC' or 'ISOMETRIC')"),
+                    "group" to mapOf("type" to "STRING", "description" to "Group/Category name (e.g., Push, Pull, Legs)"),
+                    "targetSets" to mapOf("type" to "INTEGER", "description" to "Target number of sets"),
+                    "targetValue" to mapOf("type" to "INTEGER", "description" to "Target reps or hold time in seconds"),
+                    "laterality" to mapOf("type" to "STRING", "description" to "Laterality ('BILATERAL', 'UNILATERAL', or 'ALTERNATING')"),
+                    "description" to mapOf("type" to "STRING", "description" to "Brief description or form cues")
                 ),
-                listOf("name", "type")
+                listOf("name", "type", "group")
             ),
             defineFunction(
                 "update_exercise",
                 "Update an existing exercise.",
                 mapOf(
                     "id" to mapOf("type" to "INTEGER", "description" to "ID of the exercise to update"),
-                    "name" to mapOf("type" to "STRING", "description" to "New name"),
-                    "type" to mapOf("type" to "STRING", "description" to "New type"),
-                    "group" to mapOf("type" to "STRING", "description" to "New group name"),
-                    "targetSets" to mapOf("type" to "INTEGER", "description" to "New target sets"),
-                    "targetValue" to mapOf("type" to "INTEGER", "description" to "New target reps/seconds"),
-                    "laterality" to mapOf("type" to "STRING", "description" to "New laterality"),
-                    "description" to mapOf("type" to "STRING", "description" to "New description")
+                    "name" to mapOf("type" to "STRING"),
+                    "type" to mapOf("type" to "STRING"),
+                    "group" to mapOf("type" to "STRING"),
+                    "targetSets" to mapOf("type" to "INTEGER"),
+                    "targetValue" to mapOf("type" to "INTEGER"),
+                    "laterality" to mapOf("type" to "STRING"),
+                    "description" to mapOf("type" to "STRING")
                 ),
                 listOf("id")
             ),
             defineFunction(
                 "delete_exercise",
-                "Delete an exercise and its associated Todo tasks.",
+                "Delete an exercise from the library.",
                 mapOf(
                     "id" to mapOf("type" to "INTEGER", "description" to "ID of the exercise to delete")
                 ),
@@ -100,7 +106,7 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
             ),
             defineFunction(
                 "update_program",
-                "Rename a workout program.",
+                "Rename a program.",
                 mapOf(
                     "id" to mapOf("type" to "INTEGER", "description" to "ID of the program"),
                     "name" to mapOf("type" to "STRING", "description" to "New name")
@@ -121,22 +127,21 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
                 mapOf(
                     "programId" to mapOf("type" to "INTEGER", "description" to "ID of the program"),
                     "exerciseId" to mapOf("type" to "INTEGER", "description" to "ID of the exercise"),
-                    "sets" to mapOf("type" to "INTEGER", "description" to "Number of sets"),
-                    "targetValue" to mapOf("type" to "INTEGER", "description" to "Target reps/seconds"),
-                    "intervalSeconds" to mapOf("type" to "INTEGER", "description" to "Rest interval in seconds"),
-                    "loopId" to mapOf("type" to "INTEGER", "description" to "Optional loop ID")
+                    "sets" to mapOf("type" to "INTEGER"),
+                    "targetValue" to mapOf("type" to "INTEGER"),
+                    "intervalSeconds" to mapOf("type" to "INTEGER"),
+                    "loopId" to mapOf("type" to "INTEGER", "description" to "Optional ID of a loop to add this exercise to")
                 ),
-                listOf("programId", "exerciseId", "sets", "targetValue", "intervalSeconds")
+                listOf("programId", "exerciseId")
             ),
             defineFunction(
                 "update_program_exercise",
-                "Update an exercise entry within a program.",
+                "Update an exercise within a program.",
                 mapOf(
-                    "id" to mapOf("type" to "INTEGER", "description" to "ID of the program exercise entry"),
-                    "sets" to mapOf("type" to "INTEGER", "description" to "New number of sets"),
-                    "targetValue" to mapOf("type" to "INTEGER", "description" to "New target reps/seconds"),
-                    "intervalSeconds" to mapOf("type" to "INTEGER", "description" to "New rest interval"),
-                    "loopId" to mapOf("type" to "INTEGER", "description" to "New loop ID (null to remove from loop)")
+                    "id" to mapOf("type" to "INTEGER", "description" to "ID of the program-exercise connection"),
+                    "sets" to mapOf("type" to "INTEGER"),
+                    "targetValue" to mapOf("type" to "INTEGER"),
+                    "intervalSeconds" to mapOf("type" to "INTEGER")
                 ),
                 listOf("id")
             ),
@@ -144,19 +149,19 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
                 "delete_program_exercise",
                 "Remove an exercise from a program.",
                 mapOf(
-                    "id" to mapOf("type" to "INTEGER", "description" to "ID of the program exercise entry to delete")
+                    "id" to mapOf("type" to "INTEGER", "description" to "ID of the program-exercise connection to delete")
                 ),
                 listOf("id")
             ),
             defineFunction(
                 "add_program_loop",
-                "Add a repetition loop to a program.",
+                "Add a loop (circuit) to a program.",
                 mapOf(
                     "programId" to mapOf("type" to "INTEGER", "description" to "ID of the program"),
-                    "rounds" to mapOf("type" to "INTEGER", "description" to "Number of rounds"),
-                    "restBetweenRounds" to mapOf("type" to "INTEGER", "description" to "Rest between rounds in seconds")
+                    "rounds" to mapOf("type" to "INTEGER", "description" to "Number of rounds for the loop"),
+                    "restBetweenRounds" to mapOf("type" to "INTEGER", "description" to "Rest in seconds between rounds")
                 ),
-                listOf("programId", "rounds", "restBetweenRounds")
+                listOf("programId")
             ),
             defineFunction(
                 "update_program_loop",
@@ -278,9 +283,9 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
         contextData: String,
         history: List<AiMessage> = emptyList(),
         toolHandler: suspend (String, Map<String, String?>) -> JSONObject = { _, _ -> JSONObject() }
-    ): String? {
+    ): GenerateResponseResult {
         return withContext(Dispatchers.IO) {
-            val client = getClient() ?: return@withContext "Please set your Gemini API Key in Settings first."
+            val client = getClient() ?: return@withContext GenerateResponseResult.Error("Please set your Gemini API Key in Settings first.")
             val modelName = workoutPreferences.getGeminiModel()
 
             val aiMemory = workoutPreferences.getAiMemory()
@@ -365,10 +370,33 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
                     response = client.models.generateContent(modelName, contents, config)
                 }
 
-                response.text()
+                GenerateResponseResult.Success(response.text() ?: "")
             } catch (e: Exception) {
-                "Error: ${e.message}"
+                val message = e.message ?: "Unknown error"
+                if (message.contains("429") || message.contains("Quota exceeded", ignoreCase = true)) {
+                    val retryAfter = parseRetryAfter(message)
+                    GenerateResponseResult.RateLimit(retryAfter)
+                } else {
+                    GenerateResponseResult.Error("Error: $message")
+                }
             }
         }
+    }
+
+    private fun parseRetryAfter(message: String): Int {
+        val regexJson = """retryDelay":"(\d+)s"""".toRegex()
+        val matchJson = regexJson.find(message)
+        if (matchJson != null) {
+            return matchJson.groupValues[1].toIntOrNull() ?: 60
+        }
+
+        val regexText = """Please retry in ([\d\.]+)s""".toRegex()
+        val matchText = regexText.find(message)
+        if (matchText != null) {
+            val secondsStr = matchText.groupValues[1]
+            return secondsStr.toDoubleOrNull()?.toInt() ?: 60
+        }
+
+        return 60
     }
 }

@@ -1,0 +1,9 @@
+<<<<<<< SEARCH
+    <string name="ai_coach_auto_updated_undone">[System: Auto-update undone]</string>
+</resources>
+=======
+    <string name="ai_coach_auto_updated_undone">[System: Auto-update undone]</string>
+    <string name="ai_coach_error_quota_exceeded">Quota exceeded. Please wait a moment and try again.</string>
+    <string name="ai_coach_retrying_in">Quota exceeded. Retrying in %ds…</string>
+</resources>
+>>>>>>> REPLACE

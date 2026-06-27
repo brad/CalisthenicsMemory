@@ -56,6 +56,7 @@ fun AiCoachScreen(
     val allThreads by viewModel.allThreads.collectAsState()
     val currentThreadId by viewModel.currentThreadId.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val retryCountdown by viewModel.retryCountdown.collectAsState()
     var inputText by remember { mutableStateOf("") }
     var suggestedWorkoutJson by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
@@ -211,7 +212,18 @@ fun AiCoachScreen(
                     }
                     if (isLoading) {
                         item {
-                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (retryCountdown > 0) {
+                                    Text(
+                                        text = stringResource(R.string.ai_coach_retrying_in, retryCountdown),
+                                        fontSize = 14.sp,
+                                        color = appColors.textSecondary
+                                    )
+                                }
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(24.dp),
                                     color = Purple600
