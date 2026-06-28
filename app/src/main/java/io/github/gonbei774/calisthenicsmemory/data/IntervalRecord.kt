@@ -1,8 +1,11 @@
 package io.github.gonbei774.calisthenicsmemory.data
 
+import kotlinx.serialization.Serializable
+
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+@Serializable
 @Entity(tableName = "interval_records")
 data class IntervalRecord(
     @PrimaryKey(autoGenerate = true)

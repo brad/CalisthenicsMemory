@@ -1,9 +1,12 @@
 package io.github.gonbei774.calisthenicsmemory.data
 
+import kotlinx.serialization.Serializable
+
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+@Serializable
 @Entity(
     tableName = "exercises",
     indices = [Index(value = ["name", "type"], unique = true)]

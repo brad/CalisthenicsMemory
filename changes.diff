@@ -1,0 +1,170 @@
+diff --git a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/Exercise.kt b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/Exercise.kt
+index e660202..db4e185 100644
+--- a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/Exercise.kt
++++ b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/Exercise.kt
+@@ -1,9 +1,12 @@
+ package io.github.gonbei774.calisthenicsmemory.data
+
++import kotlinx.serialization.Serializable
++
+ import androidx.room.Entity
+ import androidx.room.Index
+ import androidx.room.PrimaryKey
+
++@Serializable
+ @Entity(
+     tableName = "exercises",
+     indices = [Index(value = ["name", "type"], unique = true)]
+diff --git a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/Exercisegroup.kt b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/Exercisegroup.kt
+index 7fd5765..24ad01a 100644
+--- a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/Exercisegroup.kt
++++ b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/Exercisegroup.kt
+@@ -1,9 +1,12 @@
+ package io.github.gonbei774.calisthenicsmemory.data
+
++import kotlinx.serialization.Serializable
++
+ import androidx.room.Entity
+ import androidx.room.Index
+ import androidx.room.PrimaryKey
+
++@Serializable
+ @Entity(
+     tableName = "exercise_groups",
+     indices = [Index(value = ["name"], unique = true)]
+diff --git a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/IntervalProgram.kt b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/IntervalProgram.kt
+index 992375e..ddfdf8d 100644
+--- a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/IntervalProgram.kt
++++ b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/IntervalProgram.kt
+@@ -1,8 +1,11 @@
+ package io.github.gonbei774.calisthenicsmemory.data
+
++import kotlinx.serialization.Serializable
++
+ import androidx.room.Entity
+ import androidx.room.PrimaryKey
+
++@Serializable
+ @Entity(tableName = "interval_programs")
+ data class IntervalProgram(
+     @PrimaryKey(autoGenerate = true)
+diff --git a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/IntervalProgramExercise.kt b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/IntervalProgramExercise.kt
+index f48825e..30a7a20 100644
+--- a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/IntervalProgramExercise.kt
++++ b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/IntervalProgramExercise.kt
+@@ -1,10 +1,13 @@
+ package io.github.gonbei774.calisthenicsmemory.data
+
++import kotlinx.serialization.Serializable
++
+ import androidx.room.Entity
+ import androidx.room.ForeignKey
+ import androidx.room.Index
+ import androidx.room.PrimaryKey
+
++@Serializable
+ @Entity(
+     tableName = "interval_program_exercises",
+     foreignKeys = [
+diff --git a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/IntervalRecord.kt b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/IntervalRecord.kt
+index cc4f8c1..02d9ef3 100644
+--- a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/IntervalRecord.kt
++++ b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/IntervalRecord.kt
+@@ -1,8 +1,11 @@
+ package io.github.gonbei774.calisthenicsmemory.data
+
++import kotlinx.serialization.Serializable
++
+ import androidx.room.Entity
+ import androidx.room.PrimaryKey
+
++@Serializable
+ @Entity(tableName = "interval_records")
+ data class IntervalRecord(
+     @PrimaryKey(autoGenerate = true)
+diff --git a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/Program.kt b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/Program.kt
+index ebaa488..03c9002 100644
+--- a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/Program.kt
++++ b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/Program.kt
+@@ -1,8 +1,11 @@
+ package io.github.gonbei774.calisthenicsmemory.data
+
++import kotlinx.serialization.Serializable
++
+ import androidx.room.Entity
+ import androidx.room.PrimaryKey
+
++@Serializable
+ @Entity(tableName = "programs")
+ data class Program(
+     @PrimaryKey(autoGenerate = true)
+diff --git a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/ProgramExercise.kt b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/ProgramExercise.kt
+index d18aaea..cc7be8f 100644
+--- a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/ProgramExercise.kt
++++ b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/ProgramExercise.kt
+@@ -1,10 +1,13 @@
+ package io.github.gonbei774.calisthenicsmemory.data
+
++import kotlinx.serialization.Serializable
++
+ import androidx.room.Entity
+ import androidx.room.ForeignKey
+ import androidx.room.Index
+ import androidx.room.PrimaryKey
+
++@Serializable
+ @Entity(
+     tableName = "program_exercises",
+     foreignKeys = [
+diff --git a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/ProgramLoop.kt b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/ProgramLoop.kt
+index 1d4b077..f0d9d18 100644
+--- a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/ProgramLoop.kt
++++ b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/ProgramLoop.kt
+@@ -1,10 +1,13 @@
+ package io.github.gonbei774.calisthenicsmemory.data
+
++import kotlinx.serialization.Serializable
++
+ import androidx.room.Entity
+ import androidx.room.ForeignKey
+ import androidx.room.Index
+ import androidx.room.PrimaryKey
+
++@Serializable
+ @Entity(
+     tableName = "program_loops",
+     foreignKeys = [
+diff --git a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/TodoTask.kt b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/TodoTask.kt
+index a8f30da..bc30102 100644
+--- a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/TodoTask.kt
++++ b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/TodoTask.kt
+@@ -1,8 +1,11 @@
+ package io.github.gonbei774.calisthenicsmemory.data
+
++import kotlinx.serialization.Serializable
++
+ import androidx.room.Entity
+ import androidx.room.PrimaryKey
+
++@Serializable
+ @Entity(tableName = "todo_tasks")
+ data class TodoTask(
+     @PrimaryKey(autoGenerate = true)
+diff --git a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/TrainingRecord.kt b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/TrainingRecord.kt
+index 82d05ff..c3e3056 100644
+--- a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/TrainingRecord.kt
++++ b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/data/TrainingRecord.kt
+@@ -1,10 +1,13 @@
+ package io.github.gonbei774.calisthenicsmemory.data
+
++import kotlinx.serialization.Serializable
++
+ import androidx.room.Entity
+ import androidx.room.PrimaryKey
+ import androidx.room.ForeignKey
+ import androidx.room.Index
+
++@Serializable
+ @Entity(
+     tableName = "training_records",
+     foreignKeys = [

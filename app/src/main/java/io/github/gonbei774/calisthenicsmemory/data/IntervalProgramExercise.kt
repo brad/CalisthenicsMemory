@@ -1,10 +1,13 @@
 package io.github.gonbei774.calisthenicsmemory.data
 
+import kotlinx.serialization.Serializable
+
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+@Serializable
 @Entity(
     tableName = "interval_program_exercises",
     foreignKeys = [
