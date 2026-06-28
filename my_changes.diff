@@ -1,0 +1,40 @@
+diff --git a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/ui/screens/AiCoachScreen.kt b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/ui/screens/AiCoachScreen.kt
+index 555bc45..1ffa063 100644
+--- a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/ui/screens/AiCoachScreen.kt
++++ b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/ui/screens/AiCoachScreen.kt
+@@ -67,7 +67,7 @@ fun AiCoachScreen(
+     LaunchedEffect(initialPrompt) {
+         if (initialPrompt != null && currentThreadId == null) {
+             val contextData = trainingViewModel.getAllDataAsJson()
+-            viewModel.startNewThread(initialPrompt, contextData)
++            viewModel.startNewThread(initialPrompt, contextData, trainingViewModel)
+         }
+     }
+
+@@ -263,7 +263,7 @@ fun AiCoachScreen(
+                                 if (inputText.isNotBlank()) {
+                                     scope.launch {
+                                         val contextData = trainingViewModel.getAllDataAsJson()
+-                                        viewModel.sendMessage(inputText, contextData)
++                                        viewModel.sendMessage(inputText, contextData, trainingViewModel)
+                                         inputText = ""
+                                     }
+                                 }
+diff --git a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/viewmodel/AiViewModel.kt b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/viewmodel/AiViewModel.kt
+index 340fb90..7ca6961 100644
+--- a/app/src/main/java/io/github/gonbei774/calisthenicsmemory/viewmodel/AiViewModel.kt
++++ b/app/src/main/java/io/github/gonbei774/calisthenicsmemory/viewmodel/AiViewModel.kt
+@@ -342,11 +342,11 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
+         )
+     }
+
+-    fun startNewThread(initialText: String? = null, contextData: String? = null) {
++    fun startNewThread(initialText: String? = null, contextData: String? = null, trainingViewModel: TrainingViewModel? = null) {
+         viewModelScope.launch {
+             _currentThreadId.value = null
+             if (initialText != null && contextData != null) {
+-                sendMessage(initialText, contextData)
++                sendMessage(initialText, contextData, trainingViewModel)
+             }
+         }
+     }
