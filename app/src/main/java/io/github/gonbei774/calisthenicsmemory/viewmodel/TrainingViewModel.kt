@@ -2281,12 +2281,20 @@ class TrainingViewModel(application: Application) : AndroidViewModel(application
 
     fun deleteIntervalProgram(programId: Long) {
         viewModelScope.launch {
-            try {
-                intervalProgramDao.deleteById(programId)
-                todoTaskDao.deleteByReference(TodoTask.TYPE_INTERVAL, programId)
-            } catch (e: Exception) {
+            deleteIntervalProgramSuspend(programId)
+        }
+    }
+
+    suspend fun deleteIntervalProgramSuspend(programId: Long): Boolean = withContext(Dispatchers.IO) {
+        try {
+            intervalProgramDao.deleteById(programId)
+            todoTaskDao.deleteByReference(TodoTask.TYPE_INTERVAL, programId)
+            true
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
                 _snackbarMessage.value = UiMessage.ErrorOccurred
             }
+            false
         }
     }
 

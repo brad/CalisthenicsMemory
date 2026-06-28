@@ -1,0 +1,42 @@
+<<<<<<< SEARCH
+            defineFunction(
+                "delete_program",
+                "Delete a program.",
+                mapOf(
+                    "id" to mapOf("type" to "INTEGER", "description" to "ID of the program to delete")
+                ),
+                listOf("id")
+            ),
+=======
+            defineFunction(
+                "delete_program",
+                "Delete a standard program.",
+                mapOf(
+                    "id" to mapOf("type" to "INTEGER", "description" to "ID of the program to delete")
+                ),
+                listOf("id")
+            ),
+            defineFunction(
+                "delete_interval_program",
+                "Delete an interval program.",
+                mapOf(
+                    "id" to mapOf("type" to "INTEGER", "description" to "ID of the interval program to delete")
+                ),
+                listOf("id")
+            ),
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+            defineFunction(
+                "get_programs",
+                "Retrieve the list of all workout programs.",
+                emptyMap(),
+                emptyList()
+            ),
+=======
+            defineFunction(
+                "get_programs",
+                "Retrieve the list of all workout programs (both standard and interval).",
+                emptyMap(),
+                emptyList()
+            ),
+>>>>>>> REPLACE
