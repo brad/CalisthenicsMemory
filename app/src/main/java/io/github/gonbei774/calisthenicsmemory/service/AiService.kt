@@ -247,6 +247,38 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
                     "communityShareJson" to mapOf("type" to "STRING", "description" to "Complete CommunityShareData JSON string")
                 ),
                 listOf("communityShareJson")
+            ),
+            defineFunction(
+                "get_exercises",
+                "Retrieve the list of all exercises in the user's library.",
+                emptyMap(),
+                emptyList()
+            ),
+            defineFunction(
+                "get_programs",
+                "Retrieve the list of all workout programs.",
+                emptyMap(),
+                emptyList()
+            ),
+            defineFunction(
+                "get_training_records",
+                "Retrieve training records. You can filter by exercise ID.",
+                mapOf(
+                    "exerciseId" to mapOf("type" to "INTEGER", "description" to "Optional exercise ID to filter records")
+                ),
+                emptyList()
+            ),
+            defineFunction(
+                "get_groups",
+                "Retrieve the list of exercise groups.",
+                emptyMap(),
+                emptyList()
+            ),
+            defineFunction(
+                "get_todo_tasks",
+                "Retrieve the current list of Todo tasks.",
+                emptyMap(),
+                emptyList()
             )
         )).build()
     )
@@ -303,15 +335,16 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
                 Guidelines:
                 1. Provide helpful, encouraging, and science-based calisthenics advice.
                 2. Be aware of popular calisthenics programs like Convict Conditioning, Start Bodyweight, the Reddit Recommended Routine (RR), and concepts like Grease the Groove (GtG).
-                3. Use the provided tools to manage the user's database (exercises, programs, todo list).
-                4. If the user asks to modify, delete, or reorganize data, use the appropriate tool.
-                5. If suggesting a workout, use the 'suggest_workout' tool with a complete CommunityShareData JSON.
-                6. You can proactively update your 'Coach Memory' using the 'update_ai_memory' tool when you learn something new about the user.
-                7. Always prioritize safety and progressive overload.
-                8. Keep responses concise and focused on calisthenics.
-                9. If analyzing history, look for plateaus (3+ weeks without improvement) and suggest deloads or intensity adjustments.
-                10. Refer to the conversation history to maintain context.
-                11. Do NOT return JSON blocks for 'auto_update' or 'memory_update'. Use the tools instead.
+                3. Use the provided tools to manage and retrieve the user's database (exercises, programs, records, todo list).
+                4. If you need data that is not in the current context, use the 'get_...' tools.
+                5. If the user asks to modify, delete, or reorganize data, use the appropriate tool.
+                6. If suggesting a workout, use the 'suggest_workout' tool with a complete CommunityShareData JSON.
+                7. You can proactively update your 'Coach Memory' using the 'update_ai_memory' tool when you learn something new about the user.
+                8. Always prioritize safety and progressive overload.
+                9. Keep responses concise and focused on calisthenics.
+                10. If analyzing history, look for plateaus (3+ weeks without improvement) and suggest deloads or intensity adjustments.
+                11. Refer to the conversation history to maintain context.
+                12. Do NOT return JSON blocks for 'auto_update' or 'memory_update'. Use the tools instead.
             """.trimIndent()
 
             val chatHistory = history.map {
@@ -334,9 +367,9 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
 
                 // Tool call loop
                 for (i in 1..5) {
-                    val candidate = response.candidates().get()[0]
-                    val candidateContent = candidate.content().get()
-                    val parts = candidateContent.parts().get()
+                    val candidate = response.candidates().orElse(emptyList()).firstOrNull() ?: break
+                    val candidateContent = candidate.content().orElse(null) ?: break
+                    val parts = candidateContent.parts().orElse(emptyList())
                     val toolCalls = parts.filter { it.functionCall().isPresent }
 
                     if (toolCalls.isEmpty()) break
