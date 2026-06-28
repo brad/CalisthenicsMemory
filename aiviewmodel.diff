@@ -1,0 +1,58 @@
+<<<<<<< SEARCH
+                        "delete_program" -> {
+                            val id = args["id"]?.toLongOrNull()
+                            if (id != null) {
+                                val success = trainingViewModel?.deleteProgramSuspend(id) ?: false
+                                result.put("success", success)
+                            } else result.put("success", false)
+                        }
+=======
+                        "delete_program" -> {
+                            val id = args["id"]?.toLongOrNull()
+                            if (id != null) {
+                                val success = trainingViewModel?.deleteProgramSuspend(id) ?: false
+                                result.put("success", success)
+                                if (!success) result.put("error", "Failed to delete program. It might not exist.")
+                            } else {
+                                result.put("success", false)
+                                result.put("error", "Missing program ID")
+                            }
+                        }
+                        "delete_interval_program" -> {
+                            val id = args["id"]?.toLongOrNull()
+                            if (id != null) {
+                                val success = trainingViewModel?.deleteIntervalProgramSuspend(id) ?: false
+                                result.put("success", success)
+                                if (!success) result.put("error", "Failed to delete interval program. It might not exist.")
+                            } else {
+                                result.put("success", false)
+                                result.put("error", "Missing interval program ID")
+                            }
+                        }
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+                        "get_programs" -> {
+                            val data = trainingViewModel?.programs?.value ?: emptyList()
+                            result.put("programs", Json.encodeToString(data))
+                            result.put("success", true)
+                        }
+=======
+                        "get_programs" -> {
+                            val programs = trainingViewModel?.programs?.value?.map {
+                                mapOf("id" to it.id, "name" to it.name, "type" to "STANDARD")
+                            } ?: emptyList()
+                            val intervalPrograms = trainingViewModel?.intervalPrograms?.value?.map {
+                                mapOf("id" to it.id, "name" to it.name, "type" to "INTERVAL")
+                            } ?: emptyList()
+                            val combined = programs + intervalPrograms
+                            result.put("programs", Json.encodeToString(combined))
+                            result.put("success", true)
+                        }
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+            "create_program", "update_program", "delete_program",
+            "add_program_exercise", "update_program_exercise", "delete_program_exercise",
+=======
+            "create_program", "update_program", "delete_program", "delete_interval_program",
+            "add_program_exercise", "update_program_exercise", "delete_program_exercise",
+>>>>>>> REPLACE

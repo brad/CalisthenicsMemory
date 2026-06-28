@@ -147,7 +147,22 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
                             if (id != null) {
                                 val success = trainingViewModel?.deleteProgramSuspend(id) ?: false
                                 result.put("success", success)
-                            } else result.put("success", false)
+                                if (!success) result.put("error", "Failed to delete program. It might not exist.")
+                            } else {
+                                result.put("success", false)
+                                result.put("error", "Missing program ID")
+                            }
+                        }
+                        "delete_interval_program" -> {
+                            val id = args["id"]?.toLongOrNull()
+                            if (id != null) {
+                                val success = trainingViewModel?.deleteIntervalProgramSuspend(id) ?: false
+                                result.put("success", success)
+                                if (!success) result.put("error", "Failed to delete interval program. It might not exist.")
+                            } else {
+                                result.put("success", false)
+                                result.put("error", "Missing interval program ID")
+                            }
                         }
                         "add_program_exercise" -> {
                             val pid = args["programId"]?.toLongOrNull()
@@ -251,8 +266,14 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
                             result.put("success", true)
                         }
                         "get_programs" -> {
-                            val data = trainingViewModel?.programs?.value ?: emptyList()
-                            result.put("programs", Json.encodeToString(data))
+                            val programs = trainingViewModel?.programs?.value?.map {
+                                mapOf("id" to it.id, "name" to it.name, "type" to "STANDARD")
+                            } ?: emptyList()
+                            val intervalPrograms = trainingViewModel?.intervalPrograms?.value?.map {
+                                mapOf("id" to it.id, "name" to it.name, "type" to "INTERVAL")
+                            } ?: emptyList()
+                            val combined = programs + intervalPrograms
+                            result.put("programs", Json.encodeToString(combined))
                             result.put("success", true)
                         }
                         "get_training_records" -> {
@@ -334,7 +355,7 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
     private fun isModificationTool(name: String): Boolean {
         return name in setOf(
             "add_exercise", "update_exercise", "delete_exercise",
-            "create_program", "update_program", "delete_program",
+            "create_program", "update_program", "delete_program", "delete_interval_program",
             "add_program_exercise", "update_program_exercise", "delete_program_exercise",
             "add_program_loop", "update_program_loop", "delete_program_loop",
             "create_group", "rename_group", "delete_group",

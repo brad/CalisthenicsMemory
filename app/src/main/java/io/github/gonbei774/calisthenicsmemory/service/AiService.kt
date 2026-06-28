@@ -115,9 +115,17 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
             ),
             defineFunction(
                 "delete_program",
-                "Delete a program.",
+                "Delete a standard program.",
                 mapOf(
                     "id" to mapOf("type" to "INTEGER", "description" to "ID of the program to delete")
+                ),
+                listOf("id")
+            ),
+            defineFunction(
+                "delete_interval_program",
+                "Delete an interval program.",
+                mapOf(
+                    "id" to mapOf("type" to "INTEGER", "description" to "ID of the interval program to delete")
                 ),
                 listOf("id")
             ),
@@ -256,7 +264,7 @@ class AiService(private val workoutPreferences: WorkoutPreferences) {
             ),
             defineFunction(
                 "get_programs",
-                "Retrieve the list of all workout programs.",
+                "Retrieve the list of all workout programs (both standard and interval).",
                 emptyMap(),
                 emptyList()
             ),
