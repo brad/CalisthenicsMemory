@@ -67,7 +67,7 @@ fun AiCoachScreen(
     LaunchedEffect(initialPrompt) {
         if (initialPrompt != null && currentThreadId == null) {
             val contextData = trainingViewModel.getAllDataAsJson()
-            viewModel.startNewThread(initialPrompt, contextData)
+            viewModel.startNewThread(initialPrompt, contextData, trainingViewModel)
         }
     }
 
@@ -263,7 +263,7 @@ fun AiCoachScreen(
                                 if (inputText.isNotBlank()) {
                                     scope.launch {
                                         val contextData = trainingViewModel.getAllDataAsJson()
-                                        viewModel.sendMessage(inputText, contextData)
+                                        viewModel.sendMessage(inputText, contextData, trainingViewModel)
                                         inputText = ""
                                     }
                                 }

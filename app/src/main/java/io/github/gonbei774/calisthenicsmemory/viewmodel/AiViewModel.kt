@@ -363,11 +363,11 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    fun startNewThread(initialText: String? = null, contextData: String? = null) {
+    fun startNewThread(initialText: String? = null, contextData: String? = null, trainingViewModel: TrainingViewModel? = null) {
         viewModelScope.launch {
             _currentThreadId.value = null
             if (initialText != null && contextData != null) {
-                sendMessage(initialText, contextData)
+                sendMessage(initialText, contextData, trainingViewModel)
             }
         }
     }
