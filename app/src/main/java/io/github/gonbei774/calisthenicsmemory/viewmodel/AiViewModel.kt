@@ -19,6 +19,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import io.github.gonbei774.calisthenicsmemory.data.TrainingRecord
+import io.github.gonbei774.calisthenicsmemory.data.Program
+import io.github.gonbei774.calisthenicsmemory.data.Exercise
 
 class AiViewModel(application: Application) : AndroidViewModel(application) {
     private val database = AppDatabase.getDatabase(application)
@@ -73,10 +76,13 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
 
             aiDao.insertMessage(AiMessage(threadId = threadId, text = text, isUser = true))
 
-            val history = aiDao.getMessagesForThreadSync(threadId)
+            // Exclude the message we just inserted from history because it is passed as 'prompt'
+            val history = aiDao.getMessagesForThreadSync(threadId).filter { it.text != text }
             var workoutJsonToAppend: String? = null
 
+            var anyModificationMade = false
             val toolHandler: suspend (String, Map<String, String?>) -> JSONObject = { funcName, args ->
+                if (isModificationTool(funcName)) anyModificationMade = true
                 val result = JSONObject()
                 try {
                     when (funcName) {
@@ -239,6 +245,35 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
                             workoutJsonToAppend = args["communityShareJson"]
                             result.put("success", true)
                         }
+                        "get_exercises" -> {
+                            val data = trainingViewModel?.exercises?.value ?: emptyList()
+                            result.put("exercises", Json.encodeToString(data))
+                            result.put("success", true)
+                        }
+                        "get_programs" -> {
+                            val data = trainingViewModel?.programs?.value ?: emptyList()
+                            result.put("programs", Json.encodeToString(data))
+                            result.put("success", true)
+                        }
+                        "get_training_records" -> {
+                            val exerciseId = args["exerciseId"]?.toLongOrNull()
+                            val allRecords = trainingViewModel?.records?.value ?: emptyList()
+                            val filtered = if (exerciseId != null) {
+                                allRecords.filter { it.exerciseId == exerciseId }
+                            } else allRecords
+                            result.put("records", Json.encodeToString(filtered))
+                            result.put("success", true)
+                        }
+                        "get_groups" -> {
+                            val data = trainingViewModel?.groups?.value ?: emptyList()
+                            result.put("groups", Json.encodeToString(data))
+                            result.put("success", true)
+                        }
+                        "get_todo_tasks" -> {
+                            val data = trainingViewModel?.todoTasks?.value ?: emptyList()
+                            result.put("todoTasks", Json.encodeToString(data))
+                            result.put("success", true)
+                        }
                         else -> result.put("error", "Unknown tool")
                     }
                 } catch (e: Exception) {
@@ -288,7 +323,7 @@ class AiViewModel(application: Application) : AndroidViewModel(application) {
                 threadId = threadId,
                 text = aiMessageText,
                 isUser = false,
-                backupDataJson = snapshotJson
+                backupDataJson = if (anyModificationMade) snapshotJson else null
             )
             aiDao.insertMessage(aiMessage)
 
